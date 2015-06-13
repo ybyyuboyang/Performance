@@ -1,0 +1,173 @@
+<?php
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+include ROOT . '/biz/User.php';
+include ROOT . '/biz/Works.php';
+include ROOT . '/biz/Certify.php';
+if (!Admin::check_login_status()) {
+    Tools::GshowMsg('', "login.php");
+    exit;
+}
+$title = '用户信息收集页';
+$menu = 'excellent_manage';
+$loginname = $_SESSION['login_account'];
+$is_edit = in_array($loginname, array("admin2", "admin3")) ? true : false;
+
+$act = Tools::getValue("act", "");
+if (isset($_POST) && count($_POST["ids"]) > 0) {
+    $ids = Tools::getValue("ids", "");
+    $update = false;
+    foreach ($ids as $id) {
+        $memo1 = Tools::getValue("memo1_" . $id, "");
+        $memo2 = Tools::getValue("memo2_" . $id, "");
+        if (Certify::update_certify_by_id($id, $memo1, $memo2))
+            $update = true;
+    }
+    if ($update)
+        Tools::GshowMsg('更新成功！', "");
+}
+
+$paras = array();
+$user_id = Tools::getValue("user_id", "");
+$userinfo = User::get_user_by_user_id($user_id);
+$photos = Works::getAwardWorksByUid($user_id);
+$certify = Certify::get_certify_by_uid($user_id);
+?>
+
+<?php include ROOT . 'include/header.php'; ?>
+<div class="main">
+    <?php include ROOT . 'include/menu.php'; ?>
+    <div class="filterBox1 mainList">
+        <h2>基本资料</h2>
+        <ul class="clearfix">                
+            <li>
+                <span class="tit">用户昵称：</span>
+                <span><?= $userinfo["user_name"] ?></span>
+            </li>
+            <li>
+                <span class="tit">邮箱：</span>
+                <span><?= $userinfo["user_email"] ?></span>
+            </li>
+            <li>
+                <span class="tit">真实姓名：</span>
+                <span><?= $userinfo["real_name"] ?></span>
+            </li>
+
+            <li>
+                <span class="tit">组别：</span>
+                <span><?= ConfBase::$group[$userinfo["group_id"]]["name"] ?></span>
+            </li>
+            <li class="search">
+                <span class="tit">职业信息：</span>
+                <span><?= ConfBase::$jobs[$userinfo["job_id"]] ?></span>
+            </li>
+            <li>
+                <span class="tit">工作单位：</span>
+                <span><?= $userinfo["company"] ?></span>
+            </li>
+
+            <li>
+                <span class="tit">手机号码：</span>
+                <span><?= $userinfo["mobile"] ?></span>
+            </li>
+            <li>
+                <span class="tit">固定电话：</span>
+                <span><?= $userinfo["phone"] ?></span>
+            </li>
+            <li>
+                <span class="tit">所在省份：</span>
+                <span><?= ConfBase::$area_provinces[$userinfo["province_id"]] ?></span>
+            </li>
+            <li>
+                <span class="tit">所在城市：</span>
+                <span><?= ConfBase::$area_citys[$userinfo["city_id"]] ?></span>
+            </li>
+            <li>
+                <span class="tit">联系地址：</span>
+                <span><?= $userinfo["address"] ?></span>
+            </li>
+
+            <li>
+                <span class="tit">邮政编码：</span>
+                <span><?= $userinfo["postcode"] ?></span>
+            </li>
+            <li>
+                <span class="tit">有效证件：</span>
+                <span><?= ConfBase::$cert_type[$userinfo["cert_type"]] ?></span>
+            </li>
+            <li>
+                <span class="tit">证件号码：</span>
+                <span><?= $userinfo["cert_number"] ?></span>
+            </li>
+
+        </ul>
+    </div>
+    <form name="form1" id="form1" action="#" method="POST">
+        <?php if ($is_edit) { ?>
+            <div class="worksList1 mainList">
+                <h2>获奖用户资质证明 <a class="btnJudgeGreen"  href="javascript:uploads(1);"/>选择上传文件</a></h2>
+                <ul class="clearfix">
+                    <?php if (isset($certify[1]) && count($certify[1]) > 0) { ?>
+                        <?php foreach ($certify[1] as $k => $v) { ?>
+                            <li id="userfile_<?= $v["id"] ?>">
+                                <input type="hidden" name="ids[]" value="<?= $v["id"] ?>"/>
+                                <a class="pic" href="/uploadswj/<?= $v["source_path"] ?>" target="_blank"><img src="/uploadswj/<?= $v["thumb_path"] ?>"/></a>
+                                <input type="text" name="memo1_<?= $v["id"] ?>" value="<?= $v["memo1"] ?>" />
+                                <textarea name="memo2_<?= $v["id"] ?>"><?= $v["memo2"] ?></textarea>
+                                <div class="btn"><a class="btnJudgeRed" href="javascript:removeFile(<?= $v['id'] ?>);">删除</a></div>  
+                            </li>
+                        <? } ?>
+                    <? } ?>
+                </ul>           
+            </div>
+            <div class="worksList1 mainList">
+                <h2>用户确认回传文件 <a class="btnJudgeGreen"  href="javascript:uploads(2);"/>选择上传文件</a></h2>
+                <ul class="clearfix">
+                    <?php if (isset($certify[2]) && count($certify[2]) > 0) { ?>
+                        <?php foreach ($certify[2] as $k => $v) { ?>
+                            <li id="userfile_<?= $v["id"] ?>">
+                                <input type="hidden" name="ids[]" value="<?= $v["id"] ?>"/>
+                                <a class="pic" href="/uploadswj/<?= $v["source_path"] ?>" target="_blank"><img src="/uploadswj/<?= $v["thumb_path"] ?>"/></a>
+                                <input type="text" name="memo1_<?= $v["id"] ?>" value="<?= $v["memo1"] ?>" />
+                                <div class="btn"><a class="btnJudgeRed" href="javascript:removeFile(<?= $v['id'] ?>);">删除</a></div>  
+                            </li>
+                        <? } ?>
+                    <? } ?>
+                </ul>           
+            </div>
+
+        <?php } ?>
+        <div class="worksList1 mainList">
+            <h2>用户摄影作品（仅展示月度佳作）</h2>
+            <ul class="clearfix">
+                <?php foreach ($photos as $k => $v) { ?>
+                    <li>
+                        <a class="pic" href="<?= Tools::getImg($v['source_path']) ?>" target="_blank"><img src="<?= Tools::getImg($v['short_path']) ?>" alt="暂无图片"/></a>
+                        <p class="name">《<?= $v["work_name"] ?>》-<?= $v["photo_name"] ?></p>
+                    </li>
+                <? } ?>
+            </ul>           
+        </div>
+        <div class="mainSubmit">
+            <a class="btnJudgeGreen" href="javascript:$('#form1').submit();">保存</a><a class="btnJudge" href="#">取消</a>
+        </div>
+    </form>
+</div>
+<div class="win" style="top:150px; left:300px;display: none;">
+    <input type="hidden" id="type" name="type" value="1"/>
+    <input type="hidden" id="user_id" name="user_id" value="<?= $user_id ?>"/>
+    <object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=10,0,0,0" width="442" height="330" id="upload" align="middle">
+        <param name="allowFullScreen" value="false" />
+        <param name="wmode" value="opaque" />
+        <param name="allowScriptAccess" value="always" />
+        <param name="movie" value="js/upload.swf" />
+        <param name="quality" value="high" />
+        <param name="bgcolor" value="#ffffff" />
+        <embed src="js/upload.swf" wmode="transparent" quality="high" bgcolor="#ffffff" width="750px" height="300px" name="upload" align="middle" allowScriptAccess="always" allowFullScreen="false" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
+    </object>
+    <div class="close btn"><a href="javascript:void(0);" onclick="$('.win').hide();">×</a></div>
+</div> 
+<?php include ROOT . 'include/footer.php'; ?>
+</body>
+</html>
+<script type="text/javascript" src="js/upload.js"></script>

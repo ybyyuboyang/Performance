@@ -1,0 +1,195 @@
+<?php
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+include ROOT . '/biz/Photo.php';
+include ROOT . '/libs/Page.php';
+if (!Admin::check_login_status()) {
+    Tools::GshowMsg('', "login.php");
+    exit;
+}
+$loginname = $_SESSION['login_account'];
+$ng_reason_dict = ConfBase::$ng_reason;
+$user_froms = ConfBase::$user_from;
+$group = ConfBase::$group;
+$seach_filed = ConfBase::$search_filed;
+$photo_status = ConfBase::$photo_status;
+$group_json = json_encode($group);
+
+$title = '审核照片';
+$menu = 'check_photo';
+
+$act = Tools::getValue("act", "");
+$paras = array();
+$page = Tools::getValue("page", 1);
+$ng_reason = Tools::getValue("ng_reason", "");
+$group_id = Tools::getValue("group_id", "");
+$subgroup_id = Tools::getValue("subgroup_id", "");
+$from = Tools::getValue("from", "");
+$start = Tools::getValue("start", "");
+$end = Tools::getValue("end", "");
+$keyword = Tools::getValue("keyword", "");
+$stype = Tools::getValue("stype", "");
+$business = Tools::getValue("business", "");
+$advanced = Tools::getValue("advanced", "");
+
+if ($loginname == "admin1") {
+    $status = Tools::getValue("status", 0);
+} else {
+    $status = Tools::getValue("status", 200);
+}
+if (isset($group_id) && $group_id > 0) {
+    $sub_group = $group[$group_id]["sub"];
+}
+$paras["page"] = $page;
+$paras["status"] = $status;
+$paras["ng_reason"] = $ng_reason;
+$paras["group_id"] = $group_id;
+$paras["theme_id"] = $subgroup_id;
+$paras["from"] = $from;
+$paras["start"] = $start;
+$paras["end"] = $end;
+$paras["keyword"] = $keyword;
+$paras["stype"] = $stype;
+$paras["business"] = $business;
+
+$pageHtml = "";
+$photos = Photo::get_photos_list($paras);
+if ($photos['cnt'] > 0) {
+    $photoList = array();
+    foreach ($photos['list'] as $k => $v) {
+        $photoList[$v["work_id"]][] = $v;
+    }
+    $pageHtml = page::getPageHtml($page, 12, $photos['cnt']);
+}
+?>
+
+<?php include ROOT . 'include/header.php'; ?>
+<div class="main">
+    <?php include ROOT . 'include/menu.php'; ?>
+    <div class="wrapper">
+        <div class="titCounts">共有<?= $photos['cnt'] ?>张照片
+        </div>
+        <div class="filterBox">
+            <ul >
+                <li>
+                    <span class="tit">状态：</span>
+                    <span class="status"><a href="#" <?php if ($status == "-1") { ?>class="cur"<? } ?>>全部</a></span>
+                    <span class='status'><input type="radio" value="0"  name="status" id="radio1" <?php if ($status == 0) { ?>checked<? } ?>/><label for="radio1">待审核</label></span>
+                    <span class = 'status'><input type = "radio" value = "100" name = "status" id = "radio2" <?php if ($status == 100) {
+        ?>checked<? } ?>/><label for="radio2">审核通过</label></span>
+                    <span class='status'><input type="radio" value="200"  name="status" id="radio3" <?php if ($status == 200) { ?>checked<? } ?>/><label for="radio3">待确认的NG作品</label>&nbsp;&nbsp;
+                        <select id="ng_reason_200">
+                            <option selected="selected" value="">全部NG理由</option>
+                            <?php foreach ($ng_reason_dict as $k => $v) { ?>
+                                <option <?php if ($k == $ng_reason) { ?>selected="selected"<? } ?> value="<?= $k ?>"><?= $v ?> </option>
+                            <?php } ?>
+                        </select>
+                    </span>
+                    <span class='status'><input type="radio" value="300" name="status" id="radio4" <?php if ($status == 300) { ?>checked<? } ?>/><label for="radio4">已确认的NG作品</label>&nbsp;&nbsp;
+                        <select id="ng_reason_300">
+                            <option selected="selected" value="">全部NG理由</option>
+                            <?php foreach ($ng_reason_dict as $k => $v) { ?>
+                                <option <?php if ($k == $ng_reason) { ?>selected="selected"<? } ?> value="<?= $k ?>"><?= $v ?> </option>
+                            <?php } ?>
+                        </select>
+                    </span>
+                    <!--  for值 和 id值 相同，下同 -->                    
+                </li>
+                <li>
+                    <span class="tit">组别：</span>
+                    <span class="group"><a  <?php if ($group_id == "") { ?>class="cur"<? } ?> href="#" groupid="0">全部</a></span>
+                    <?php foreach ($group as $k => $v) { ?>
+                        <span class="group"><a href="#" <?php if ($k == $group_id) { ?>class="cur"<? } ?> groupid="<?= $k ?>"><?= $v['name'] ?></a></span>
+                    <? } ?>
+                </li>
+                <?php if ($group_id == 10000 || $group_id == 50000) { ?>
+                    <li id="subject">
+                        <span class="tit">主题：</span>
+                        <span class='subgroup'><a href="#" <?php if ($subgroup_id == "") { ?>class="cur"<? } ?>>全部</a></span>
+                        <?php foreach ((array) $sub_group as $k => $v) { ?>
+                            <span class='subgroup'><a href="#" <?php if ($k == $subgroup_id) { ?>class="cur"<? } ?> subgroupid='<?= $k ?>'><?= $v ?></a></span>
+                        <? } ?>
+                    </li> 
+                <? } ?> 
+                <li>
+                    <span class="tit">来源：</span>
+                    <span class='userfrom'><a href="#" <? if ($from == "") { ?>class="cur"<? } ?>userfrom="">全部</a></span>
+                    <?php foreach ($user_froms as $k => $v) { ?>
+                        <span class='userfrom'><a href="#" <? if ($from == $k) { ?>class="cur"<? } ?>userfrom="<?= $k ?>"><?= $v ?></a></span>
+                    <?php } ?>
+                </li>
+                <li class="<?php echo ($advanced != 1) ? "advancedsearch" : "" ?> search" >
+                    <span class="tit">提交时间：</span>从&nbsp;<input type="text" name="start_time" id="start" value="<?= $start ?>"  >&nbsp;到&nbsp;<input type="text"  name="end_time" value="<?= $end ?>"  id="end"/></td>
+                </li>
+                <li class="<?php echo ($advanced != 1) ? "advancedsearch" : "" ?> search" >
+                    <span class="tit">搜索：</span>
+                    <select id='stype'>
+                        <?php foreach ($seach_filed as $k => $v) { ?>
+                            <option  value="<?= $k ?>" <?php if ($k == $stype) { ?>selected="selected"<? } ?>><?= $v ?> </option>
+                        <?php } ?>
+                    </select>
+                    <input type="text" id='keyword' value='<?= $keyword ?>'/>
+                </li>
+                <li class="<?php echo ($advanced != 1) ? "advancedsearch" : "" ?> search" >
+                    <span>是否同意将作品用于商业用途：
+                        <select name="business" id="business" >
+                            <option value="">全部</option>
+                            <option  value="1" <?php if ($business == 1) { ?>selected="selected"<? } ?>>是</option>
+                            <option  value="2" <?php if ($business == 2) { ?>selected="selected"<? } ?>>否</option>
+                        </select>
+                    </span>
+                </li>
+            </ul>
+            <div class="btnConfirm"><a id="btnSearch" href="javascript:searchPhotos();">确定</a></div>
+            <div class="more" id="more" style="display: <?php echo ($advanced == 1) ? "none" : "block;" ?>;">&nabla;<a href="#">展开检索条件</a></div>
+            <div class="more" id="less" style="display: <?php echo ($advanced == 1) ? "block" : "none;" ?>;">&Delta;<a href="#">收起检索条件</a></div>
+        </div>
+        <div class="worksList">
+            <?php include ROOT . 'include/photo/photo_row_' . $loginname . '.php'; ?>
+        </div>
+        <div class="pageBar"><?= $pageHtml ?></div> 
+    </div>
+</div>
+<iframe frameborder="0" style="display:none; _display:block; position:absolute; top:200px; left:300px; width:640px; height:330px; z-index:500;"></iframe>
+<!-- IE6中弹框时，同时弹出一个与iframe大小位置相同的空iframe，以避免ie6中，select出现在弹框之上-->
+<div class="win" style="top:200px; left:300px;display: none;">
+    <input type="hidden" id="photo_id" value=""/>
+    <div class="ngReason">
+        <h6>选择NG理由</h6>
+        <?php foreach ($ng_reason_dict as $k => $v) { ?>
+            <p><input type="radio" id="ng_reason_<?= $k ?>" value="<?= $k ?>" name="photo_ng_reason"/><label  for="ng_reason_<?= $k ?>"><?= $v ?></label></p>
+        <?php } ?>
+        <div class="btn"><a class="btnJudgeGreen" href="javascript:void(0);" onclick="ng_submit();">确定</a></div>
+    </div>
+    <div class="close btn"><a href="javascript:void(0);" onclick="$('.win').hide();">×</a></div>
+</div>
+<?php include ROOT . 'include/footer.php'; ?>
+</body>
+</html>
+<script type="text/javascript" src="js/listtable.js"></script>
+<script type="text/javascript" src="js/photo.js"></script>
+<script type="text/javascript" src="js/date/jquery.datepick.js"></script>
+<script type="text/javascript" src="js/date/jquery.datepick-zh-CN.js"></script>
+<link href="js/date/jquery.datepick.css" rel="stylesheet" type="text/css" />
+<script language="JavaScript">
+    $(document).ready(function() {
+
+        g_group_json = <?php echo $group_json ?>;
+        $('#start,#end').datepick({dateFormat: 'yy-mm-dd'});
+
+        listTable.filter.page = '<?php echo $page ?>';
+        listTable.filter.status = '<?php echo $status ?>';
+        listTable.filter.ng_reason = '<?php echo $ng_reason ?>';
+        listTable.filter.group_id = '<?php echo $group_id ?>';
+        listTable.filter.subgroup_id = '<?php echo $subgroup_id ?>';
+        listTable.filter.from = '<?php echo $from ?>';
+        listTable.filter.start = '<?php echo $startdate ?>';
+        listTable.filter.end = '<?php echo $enddate ?>';
+        listTable.filter.keyword = '<?php echo $keyword ?>';
+        listTable.filter.stype = '<?php echo $stype ?>';
+        listTable.filter.business = '<?php echo $business ?>';
+        listTable.filter.advanced = '<?php echo $advanced ?>';
+
+    });
+
+</script>

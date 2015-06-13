@@ -1,0 +1,98 @@
+body {
+	font-family: 'Lustria',"jaf-bernino-sans","Lucida Grande","Lucida Sans Unicode","Lucida Sans",Geneva,Verdana,sans-serif;
+	font-style:normal;
+	text-rendering:optimizeLegibility;
+	-webkit-font-smoothing:antialiased;
+	-moz-osx-font-smoothing:grayscale;
+	-moz-font-feature-settings:"liga" on;
+	color:rgba(0,0,0,0.8);
+	line-height:1.5;
+	text-align: center;
+}
+
+#wrapper {
+	width: 100%;
+	height: 100%;
+	display: table;
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	top: 0;
+	z-index: 1;
+	background-image: url('../images/4.jpg');
+	background-size: cover;
+	background-attachment: fixed;
+	background-repeat: no-repeat;
+	background-position: center;
+	-webkit-transform: rotate3d(1, 1, 1);
+}
+
+#logo {
+	color: #fff;
+	top: 20px;
+	width: 100%;
+	height: 60px;
+	position: fixed;
+	z-index: 4;
+	font-size: 24px;
+	background: url('../images/6.png') no-repeat 5% 0;
+}
+
+#content {
+	position: relative;
+	z-index: 2;
+	width: 100%;
+	height: 100%;
+	display: table-cell;
+	vertical-align: middle;
+	text-align: center;
+}
+
+#content h1 {
+	font-size: 64px;
+	color: #fff;
+}
+
+#content p {
+	font-size: 24px;
+	color: #fff;
+	margin-top: 20px;
+	margin-bottom: 70px;
+}
+
+#info {
+	padding: 0 60px;
+	margin: 0 auto;
+	z-index: 3;
+	position: relative;
+	display: block;
+	-webkit-user-select: text;
+}
+
+#copyright {
+	color: #fff;
+	bottom: 20px;
+	width: 100%;
+	position: fixed;
+	z-index: 4;
+	text-align: center;
+	font-size: 14px;
+}
+
+.btn-entry {
+	background: #fff;
+	border-radius: 40px;
+	font-size: 24px;
+	color: #4A4A4A;
+	padding: 10px 40px;
+}
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,161 @@
+<?php
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+include ROOT . '/biz/Works.php';
+include ROOT . '/libs/Page.php';
+if (!Admin::check_login_status()) {
+    Tools::GshowMsg('', "login.php");
+    exit;
+}
+$loginname = $_SESSION['login_account'];
+
+$ng_reason_dict = ConfBase::$ng_reason;
+$user_froms = ConfBase::$user_from;
+$group = ConfBase::$group;
+$seach_filed = ConfBase::$search_filed;
+$photo_status = ConfBase::$photo_status;
+$group_json = json_encode($group);
+
+$title = '月度佳作管理';
+$menu = 'excellent_manage';
+
+$act = Tools::getValue("act", "");
+$paras = array();
+$page = Tools::getValue("page", 1);
+$group_id = Tools::getValue("group_id", "");
+$subgroup_id = Tools::getValue("subgroup_id", "");
+$is_phone_confirm = Tools::getValue("is_phone_confirm", "");
+$keyword = Tools::getValue("keyword", "");
+$stype = Tools::getValue("stype", "");
+$award_month = Tools::getValue("award_month", "");
+
+if (isset($group_id) && $group_id > 0) {
+    $sub_group = $group[$group_id]["sub"];
+}
+$paras["page"] = $page;
+$paras["is_phone_confirm"] = $is_phone_confirm;
+$paras["group_id"] = $group_id;
+$paras["theme_id"] = $subgroup_id;
+$paras["keyword"] = $keyword;
+$paras["stype"] = $stype;
+$paras["award_month"] = $award_month;
+
+$works = Works::getAwardWorks($paras);
+$pageHtml = page::getPageHtml($page, 10, $works['cnt']);
+?>
+
+<?php include ROOT . 'include/header.php'; ?>
+<div class="main">
+    <?php include ROOT . 'include/menu.php'; ?>
+    <div class="wrapper">
+        <div class="filterBox">
+            <ul>
+                <li>
+                    <span class="tit">组别：</span>
+                    <span class="group"><a  <?php if ($group_id == "") { ?>class="cur"<? } ?> href="#" groupid="0">全部</a></span>
+                    <?php foreach ($group as $k => $v) { ?>
+                        <span class="group"><a href="#" <?php if ($k == $group_id) { ?>class="cur"<? } ?> groupid="<?= $k ?>"><?= $v['name'] ?></a></span>
+                    <? } ?>
+                </li>      
+                <?php if ($group_id == 10000 || $group_id == 50000) { ?>
+                    <li id="subject">
+                        <span class="tit">主题：</span>
+                        <span class='subgroup'><a href="#" <?php if ($subgroup_id == "") { ?>class="cur"<? } ?>>全部</a></span>
+                        <?php foreach ((array) $sub_group as $k => $v) { ?>
+                            <span class='subgroup'><a href="#" <?php if ($k == $subgroup_id) { ?>class="cur"<? } ?> subgroupid='<?= $k ?>'><?= $v ?></a></span>
+                        <? } ?>
+                    </li> 
+                <? } ?>              
+                <li>
+                    <span>获佳作时间：
+                        <select id="award_month">
+                            <option  value="" selected>全部时间</option>
+                            <option  value="5" <?php if ($award_month == 5) { ?>selected<?php } ?>>5月</option>
+                            <option  value="6" <?php if ($award_month == 6) { ?>selected<?php } ?>>6月</option>
+                            <option  value="7" <?php if ($award_month == 7) { ?>selected<?php } ?>>7月</option>
+                            <option  value="8" <?php if ($award_month == 8) { ?>selected<?php } ?>>8月</option>
+                        </select>
+                    </span>                    
+                    <span>核实状态：
+                        <select id="is_phone_confirm">
+                            <option value="" selected>全部状态</option>
+                            <option value="1" <?php if ($is_phone_confirm == 1) { ?>selected<?php } ?>>未电话确认</option>
+                            <option value="2" <?php if ($is_phone_confirm == 2) { ?>selected<?php } ?>>已电话确认</option>
+                            <option value="3" <?php if ($is_phone_confirm == 3) { ?>selected<?php } ?>>电话联系不上</option>
+                        </select>
+                    </span>                    
+                </li>                
+                <li class="search">
+                    <span class="tit">搜索：</span>
+                    <select id="stype">
+                        <option value="WorksName" <?php if ($stype == "WorksName") { ?>selected<?php } ?>>作品名</option>
+                        <option value="WorksID" <?php if ($stype == "WorksID") { ?>selected<?php } ?>>作品ID</option>
+                        <option value="LoginName" <?php if ($stype == "LoginName") { ?>selected<?php } ?>>作者昵称</option>
+                        <option value="RealName" <?php if ($stype == "RealName") { ?>selected<?php } ?>>作者真实姓名</option>
+                    </select>
+                    <input type="text" id="keyword" value="<?= $keyword ?>"/>
+                    <span class="btnConfirm"><a href="javascript:searchAwardWorks();">确定</a></span>
+                </li>
+            </ul>
+        </div>
+        <div class="preManageList">
+            <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                    <th width="5%">作品ID</th>
+                    <th width="12%">作品名称</th>
+                    <th width="8%">作品组别/主题</th>
+                    <th width="8%">作者昵称</th>
+                    <th width="8%">真实姓名</th>
+                    <th width="13%">手机号/固定电话</th>
+                    <th width="7%">电子邮箱</th>
+                    <th width="20%">通信地址</th>
+                    <th width="5%">邮政编码</th>
+                    <th width="3%">赞数</th>
+                    <th width="5%">核实状态</th>
+                    <th width="6%">获佳作时间</th>                    
+                </tr>    
+                <?php if ($works["cnt"] > 0) { ?>
+                    <?php foreach ($works["list"] as $k => $v) { ?>
+                        <tr>
+                            <td><?= $v["work_id"] ?></td>
+                            <td><a href="work_detail.php?work_id=<?= $v["work_id"] ?>"><?= $v["work_name"] ?></a></td>
+                            <td><?= $v['group_id'] > 0 ? $group[$v['group_id']]["name"] : "" ?>/<?= $v['theme_id'] > 0 ? $group[$v['group_id']]["sub"][$v['theme_id']] : "" ?></td>
+                            <td><?= $v["user_name"] ?></td>
+                            <td><?= $v["real_name"] ?></td> 
+                            <td><?= $v["mobile"] ?><br/><?= $v["phone"] ?></td>
+                            <td><a href="uinfo_collect.php?user_id=<?= $v["user_id"] ?>"><?= $v["user_email"] ?></a></td>
+                            <td><?= $v["address"] ?></td>
+                            <td><?= $v["postcode"] ?></td>
+                            <td><?= $v["good_num"] ?></td>
+                            <td><?= ConfBase::$is_phone_status[$v["is_phone_confirm"]] ?></td>
+                            <td><?= $v["work_award"] > 0 ? substr($v["work_award"], -1) . "月" : "" ?></td>
+                        </tr>
+                    <?php } ?>
+                <?php } else { ?>
+                    <tr><td colspan="12" align="center">暂无您查找的数据！</td>
+                    <?php } ?>
+            </table>
+        </div>
+        <div class="pageBar"><?= $pageHtml ?></div> 
+    </div>
+</div>
+<?php include ROOT . 'include/footer.php'; ?>
+</body>
+</html>
+<script type="text/javascript" src="js/listtable.js"></script>
+<script type="text/javascript" src="js/photo.js"></script>
+<script language="JavaScript">
+    $(document).ready(function() {
+        g_group_json = <?php echo $group_json ?>;
+
+        listTable.filter.page = '<?php echo $page ?>';
+        listTable.filter.group_id = '<?php echo $group_id ?>';
+        listTable.filter.subgroup_id = '<?php echo $subgroup_id ?>';
+        listTable.filter.keyword = '<?php echo $keyword ?>';
+        listTable.filter.stype = '<?php echo $stype ?>';
+        listTable.filter.award_month = '<?php echo $award_month ?>';
+        listTable.filter.is_phone_confirm = '<?php echo $is_phone_confirm ?>';
+
+    });
+
+</script>

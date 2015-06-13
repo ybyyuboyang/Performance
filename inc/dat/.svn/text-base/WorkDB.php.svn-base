@@ -1,0 +1,349 @@
+<?php
+
+include_once ROOT . "/libs/DB.php";
+
+class WorkDB {
+
+    public static function modi_work_info($work_id, $post) {
+        $sql = 'UPDATE works SET good_num=:good_num,expert_comm=:expert_comm,is_phone_confirm=:is_phone_confirm,photo_area=:photo_area ,work_award=:work_award ,export_comm_time=UNIX_TIMESTAMP(),update_at=NOW() WHERE work_id=:work_id';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'work_id' => $work_id,
+            'good_num' => $post['good_num'],
+            'expert_comm' => $post['expert_comm'],
+            'is_phone_confirm' => $post['is_phone_confirm'],
+            'photo_area' => $post['photo_area'],
+            'work_award' => $post['award_month']
+        );
+        $rs = DB::getInstance($dbcfg)->affect_num($sql, $params);
+        return $rs;
+    }
+
+    /* 获取佳作 */
+
+    public static function getAwardWorks($post) {
+        $filed1 = "w.work_id,w.work_name,w.work_award,w.good_num,w.group_id,w.theme_id,w.is_phone_confirm";
+        $filed2 = "u.user_id,u.user_name,u.real_name,u.user_email,u.postcode,u.address,u.mobile,u.phone ";
+        $sql = "SELECT SQL_CALC_FOUND_ROWS $filed1,$filed2 from works as w left join user_info as u on u.user_id=w.user_id";
+        $sql.=" where 1 and u.user_id>0 ";
+        $params = array();
+        if ($post['is_phone_confirm'] != "") {
+            $sql .=" AND (w.is_phone_confirm=:is_phone_confirm)";
+            $params['is_phone_confirm'] = $post['is_phone_confirm'];
+        }
+        if ($post['award_month'] != "") {
+            $sql .=" AND (w.work_award=:award_month)";
+            $params['award_month'] = "20140" . $post['award_month'];
+        } else {
+            $sql .=" AND (w.work_award>0)";
+        }
+        if ($post['group_id'] > 0) {
+            $sql .=" AND (w.group_id=:group_id) ";
+            $params['group_id'] = $post['group_id'];
+            if ($post['theme_id'] > 0) {
+                $sql .=" AND (w.theme_id=:theme_id) ";
+                $params['theme_id'] = $post['theme_id'];
+            }
+        }
+
+        if ($post['stype'] != "" && $post['keyword'] != "") {
+            switch ($post['stype']) {
+                case "WorksName":
+                    //$sql .=" AND (w.work_name=:keyword) ";
+                    $sql.= ' AND w.work_name LIKE \'%' . sprintf('%s', $post['keyword']) . '%\' ';
+                    break;
+                case "WorksID":
+                    $sql .=" AND (w.work_id=:keyword) ";
+                    break;
+                case "LoginName":
+                    $sql.= ' AND u.user_name LIKE \'%' . sprintf('%s', $post['keyword']) . '%\' ';
+                    break;
+                case "RealName":
+                    $sql.= ' AND u.real_name LIKE \'%' . sprintf('%s', $post['keyword']) . '%\' ';
+                    break;
+            }
+            $params['keyword'] = $post['keyword'];
+        }
+        $offer = ($post['page'] - 1) * 10;
+        $sql.=" ORDER BY w.work_id desc LIMIT $offer ,10";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $tmp = $db->get_rs($sql, $params);
+        $rs['list'] = $tmp;
+
+        $sql = 'SELECT FOUND_ROWS();';
+        $tmp = $db->get_r($sql);
+        $rs['cnt'] = $tmp['FOUND_ROWS()'];
+        return $rs;
+    }
+
+    /* 根据UID获取其佳作 */
+
+    public static function getAwardWorksByUid($user_id) {
+        $filed1 = "p.photo_id,p.photo_name,p.short_path,p.source_path,p.photo_status";
+        $filed2 = "w.work_id,w.work_name";
+        $sql = "SELECT $filed1 ,$filed2 from works_photo as p left join works as w on p.work_id=w.work_id ";
+        $sql.=" where w.user_id=:user_id and w.work_award>0";
+        $params = array();
+        $params['user_id'] = $user_id;
+
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    /* 根据Work_ID获取作品相关信息 */
+
+    public static function getInfoByWorkid($work_id) {
+
+        $filed1 = "w.work_id,w.work_name,w.work_desc,w.good_num,w.group_id,w.theme_id,w.work_type,w.expert_comm,w.is_phone_confirm,w.photo_area,w.work_award,w.work_status,w.modify_at as submitdate";
+        $filed2 = "u.* ";
+        $sql = "SELECT $filed1,$filed2 from works as w left join user_info as u on u.user_id=w.user_id";
+        $sql.=" where w.work_id=:work_id and w.is_delete=0 ";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('work_id' => $work_id);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    /* 根据WorkID获取tagname */
+
+    public static function get_tag_by_work($work_id) {
+        $sql = 'SELECT GROUP_CONCAT(tagname) as tagname FROM works_tags WHERE work_id=:work_id and is_delete=0';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('work_id' => $work_id);
+        $rs = DB:: getInstance($dbcfg)->get_r($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisWork($start, $end) {
+        $sql = "SELECT  DATE_FORMAT(create_at,'%Y%m%d') as sdate,group_id ,theme_id,count(work_id) as count FROM works  ";
+        $sql.=" where work_status<>500 AND is_delete=0  ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" GROUP BY sdate,group_id ,theme_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisWork2($start, $end) {
+        $sql = "SELECT   DATE_FORMAT(create_at,'%Y%m%d') as sdate,group_id ,theme_id,count(work_id) as count FROM works  ";
+        $sql.=" where work_status<>500 AND is_delete=0  ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" GROUP BY sdate,group_id ,theme_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //统计作品赞数
+    public function statisWorkGoodNum($start, $end) {
+
+        $sql = "SELECT  count(id) as tgoodnum FROM works_good_log  ";
+        $sql.=" where 1 ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    //统计作品赞数
+    public function statisWorkGoodNum2($start, $end) {
+        $sql = "SELECT  DATE_FORMAT(create_at,'%Y%m%d') as sdate, count(id) as tgoodnum FROM works_good_log  ";
+        $sql.=" where 1 ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" GROUP BY sdate ";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisPrWork2($start, $end) {
+        $sql = "SELECT  DATE_FORMAT(w.create_at,'%Y%m%d') as sdate,count(w.work_id) as count FROM works as w left join user_info as u on w.user_id=u.user_id ";
+        $sql.=" where u.is_reg_pr=1 AND  w.work_status<>500 AND w.is_delete=0 ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (w.create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (w.create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" GROUP BY sdate ";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisPrWork($start, $end) {
+        $sql = "SELECT count(w.work_id) as count FROM works as w left join user_info as u on w.user_id=u.user_id ";
+        $sql.=" where u.is_reg_pr=1 AND  w.work_status<>500 AND w.is_delete=0 ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (w.create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (w.create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisWorkYesterday() {
+
+        $params = array();
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+        $sql = "SELECT group_id ,theme_id,count(work_id) as count FROM works  ";
+        $sql.=" where work_status<>500 AND is_delete=0 ";
+        $sql .=" AND (create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $sql.=" GROUP BY group_id ,theme_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //统计作品赞数
+    public function statisYesterdayWorkGoodNum() {
+        $params = array();
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+
+        $sql = "SELECT  count(id) as tgoodnum FROM works_good_log  where 1";
+        $sql .=" AND (create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisPrWorkYesterday() {
+        $params = array();
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+
+        $sql = "SELECT count(w.work_id) as count FROM works as w left join user_info as u on w.user_id=u.user_id ";
+        $sql.=" where u.is_reg_pr=1 AND w.work_status<>500 AND w.is_delete=0 ";
+        $sql .=" AND (w.create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (w.create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    //按时间统计摄影协会注册人数
+    public static function getOutUser($start, $end) {
+        $sql = 'SELECT COUNT(1) as cnt FROM user_info WHERE create_at>=:start_date AND create_at<:end_date AND reg_from=100';
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('start_date' => $start, 'end_date' => $end);
+        $rs = $db->get_r($sql, $params);
+	return $rs;
+    }
+
+    public static function getJoinOutUser($start, $end, $key) {
+        $where = '';
+        if ($key != 'total') {
+            $where = ' AND theme_id=' . $key . ' ';
+        }
+        $sql = 'SELECT theme_id,COUNT(DISTINCT user_id) as cnt FROM works WHERE work_status<>500 AND  create_at>=:start_date AND create_at<:end_date AND is_delete=0 AND user_id IN( '
+                . 'SELECT user_id FROM user_info WHERE  reg_from=100 '
+                . ') ' . $where;
+
+
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('start_date' => $start, 'end_date' => $end);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    public static function getJoinPhotoNum($start, $end, $key) {
+        $where = '';
+        if ($key != 'total') {
+            $where = ' AND theme_id=' . $key;
+        }
+        $sql = 'SELECT COUNT(photo_id) as cnt FROM works_photo WHERE photo_status<>500 AND is_delete=0 AND user_id IN( '
+                . 'SELECT user_id FROM user_info WHERE  reg_from=100 '
+                . ') AND create_at>=:start_date AND create_at<:end_date AND work_id IN(SELECT work_id FROM works WHERE  is_delete=0 ' . $where . ')';
+
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('start_date' => $start, 'end_date' => $end);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    public static function getNGPhotoNum($start, $end, $key) {
+        $where = '';
+        if ($key != 'total') {
+            $where = ' AND theme_id=' . $key;
+        }
+        $sql = 'SELECT COUNT(photo_id) as cnt FROM works_photo WHERE photo_status=300 AND is_delete=0 AND user_id IN( '
+                . 'SELECT user_id FROM user_info WHERE  reg_from=100 '
+                . ') AND create_at>=:start_date AND create_at<:end_date AND work_id IN(SELECT work_id FROM works WHERE  is_delete=0 ' . $where . ')';
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('start_date' => $start, 'end_date' => $end);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+}

@@ -1,0 +1,9 @@
+<div class="mainMenu">
+    <ul class="clearfix">
+        <li><a <?php if ($menu == 'check_photo') { ?>class="cur" <?php } ?> href="check_photo.php">审核照片</a></li>
+        <li><a  <?php if ($menu == 'search_user') { ?>class="cur" <?php } ?> href="search_user.php">查找用户</a></li>
+        <li><a <?php if ($menu == 'statis') { ?>class="cur" <?php } ?> href="statis.php">数据统计</a></li>
+        <li><a <?php if ($menu == 'reject_photo_statis') { ?>class="cur" <?php } ?> href="reject_photo_statis.php">问题照片统计</a></li>
+        <li><a <?php if ($menu == 'excellent_manage') { ?>class="cur" <?php } ?> href="excellent_manage.php">月度佳作管理</a></li>
+    </ul>
+</div>

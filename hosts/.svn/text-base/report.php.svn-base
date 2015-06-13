@@ -1,0 +1,153 @@
+<?php
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+include ROOT . '/biz/User.php';
+include ROOT . '/biz/Photo.php';
+include ROOT . '/biz/Works.php';
+include ROOT . '/biz/PrVisit.php';
+if (!Admin::check_login_status()) {
+    Tools::GshowMsg('', "login.php");
+    exit;
+}
+/* 前一天数据统计 */
+$userdata = User::statisUserYesterday();
+$usercsdata = User::statisCSUserYesterday();
+$workdata = Works::statisWorkYesterday();
+$photodata = Photo::statisPhotoYesterday();
+$ngphotodata = Photo::statisPhotoYesterday(true);
+$visitCount = PrVisit::getVisit();
+$temp = WorkDB::statisYesterdayWorkGoodNum();
+$good_num = $temp["count"] > 0 ? $temp["count"] : 0;
+
+//liruifeng add 20140429 获取摄影协会注册信息
+$outInfo = Works::getOutInfo();
+?>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <h3>比赛数据统计</h3>
+    <table border="1px" style="width:1000px; border-collapse:collapse; border-spacing:1px;">
+        <tr>
+            <th width="12%"></th>
+            <th width="12%">专业组(新闻)</th>
+            <th width="13%">人文/生态/风景</th>
+            <th width="12%">专业组(人文)</th>
+            <th width="12%">专业组(生态)</th>
+            <th width="12%">专业组(风景)</th>
+            <th width="12%"> 高校专业组</th>
+            <th width="12%">青少专业组</th>
+        </tr>                
+        <tr>
+            <td>注册人数</td>
+            <td><?= intval($userdata[50000]) ?></td>
+            <td><?= intval($userdata[10000]) ?></td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td><?= intval($userdata[20000]) ?></td>
+            <td><?= intval($userdata[30000]) ?></td>
+        </tr>
+        <tr>
+            <td>参赛用户数</td>
+            <td><?= intval($usercsdata[50001]) ?></td>
+            <td><?= intval($usercsdata[10000]) ?></td>
+            <td><?= intval($usercsdata[10001]) ?></td>
+            <td><?= intval($usercsdata[10002]) ?></td>
+            <td><?= intval($usercsdata[10003]) ?></td>
+            <td><?= intval($usercsdata[20000]) ?></td>
+            <td><?= intval($usercsdata[30000]) ?></td>
+        </tr>
+        <tr>
+            <td>照片数量</td>
+            <td><?= intval($photodata[50001]) ?></td>
+            <td><?= intval($photodata[10000]) ?></td>
+            <td><?= intval($photodata[10001]) ?></td>
+            <td><?= intval($photodata[10002]) ?></td>
+            <td><?= intval($photodata[10003]) ?></td>
+            <td><?= intval($photodata[20000]) ?></td>
+            <td><?= intval($photodata[30000]) ?></td>
+        </tr>
+        <tr>
+            <td>NG照片数</td>
+            <td><?= intval($ngphotodata[50001]) ?></td>
+            <td><?= intval($ngphotodata[10000]) ?></td>
+            <td><?= intval($ngphotodata[10001]) ?></td>
+            <td><?= intval($ngphotodata[10002]) ?></td>
+            <td><?= intval($ngphotodata[10003]) ?></td>
+            <td><?= intval($ngphotodata[20000]) ?></td>
+            <td><?= intval($ngphotodata[30000]) ?></td>
+        </tr>
+    </table>
+    <h3>网站数据统计</span></h3>
+    <table border="1px"  style="width:250px; border-collapse:collapse; border-spacing:0;">
+        <tr>
+            <th width="33%">注册人数</th>
+            <th width="33%">照片数量</th>
+            <th width="33%">赞数</th>
+        </tr>
+        <tr>
+            <td><?= intval($userdata["total"]) ?></td>
+            <td><?= intval($photodata["total"]) ?></td>
+            <td><?= intval($workdata["tgoodnum"]) ?></td>
+        </tr>
+    </table>
+    <h3>PR数据统计</span></h3>
+    <table border="1px" style="width:600px; border-collapse:collapse; border-spacing:0;">
+        <tr>
+            <th width="25%">PR引导访问次数</th>
+            <th width="25%">PR引导用户注册数</th>
+            <th width="25%">PR引导作品数</th>
+            <th width="25%">PR引导照片数</th>
+        </tr>
+        <tr>
+            <td><?= intval($visitCount) ?></td>
+            <td><?= intval($userdata["prcount"]) ?></td>
+            <td><?= intval($workdata["prcount"]) ?></td>
+            <td><?= intval($photodata["prcount"]) ?></td>
+        </tr>
+    </table>
+    <h3>协会数据统计</span></h3>
+    <table border="1px" style="width:600px; border-collapse:collapse; border-spacing:0;">
+        <tr>
+            <th width="20%">&nbsp;</th>
+            <th width="20%">人文/生态/风景</th>
+            <th width="20%">专业组(人文)</th>
+            <th width="20%">专业组(生态)</th>
+            <th width="20%">专业组(风景)</th>
+        </tr>
+        <tr>
+            <td>注册人数</td>
+            <td><?= $outInfo['regInfo']['total'] ?></td>
+            <td><?= $outInfo['regInfo']['10001'] ?></td>
+            <td><?= $outInfo['regInfo']['10002'] ?></td>
+            <td><?= $outInfo['regInfo']['10003'] ?></td>
+        </tr>
+        <tr>
+            <td>参赛用户数</td>
+            <td><?= $outInfo['joinUserInfo']['total'] ?></td>
+            <td><?= $outInfo['joinUserInfo']['10001'] ?></td>
+            <td><?= $outInfo['joinUserInfo']['10002'] ?></td>
+            <td><?= $outInfo['joinUserInfo']['10003'] ?></td>
+        </tr>
+        <tr>
+            <td>照片数量</td>
+            <td><?= $outInfo['PhotoNums']['total'] ?></td>
+            <td><?= $outInfo['PhotoNums']['10001'] ?></td>
+            <td><?= $outInfo['PhotoNums']['10002'] ?></td>
+            <td><?= $outInfo['PhotoNums']['10003'] ?></td>
+        </tr>
+        <tr>
+            <td>NG照片数</td>
+            <td><?= $outInfo['NgPhotoNums']['total'] ?></td>
+            <td><?= $outInfo['NgPhotoNums']['10001'] ?></td>
+            <td><?= $outInfo['NgPhotoNums']['10002'] ?></td>
+            <td><?= $outInfo['NgPhotoNums']['10003'] ?></td>
+        </tr>
+    </table>
+    <br/>
+    <div>*统计数据为次日13：00系统自动推送，可能由于事务局在13：00前未审核完毕全部作品，或未确认NG造成NG数量有出入。</div>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<?php
+
+include_once ROOT . '/dat/PhotoDB.php';
+include_once ROOT . '/libs/Auth.php';
+
+class Photo {
+
+    public static function get_photos_list($paras) {
+
+        $workInfo = PhotoDB::getPhotoByWhere($paras);
+        return $workInfo;
+    }
+
+    public static function get_ngphotos_list($paras) {
+        $workInfo = PhotoDB::getNGPhotoByWhere($paras);
+        return $workInfo;
+    }
+
+    public static function get_photo_by_workid($work_id) {
+        $photoList = PhotoDB::getPhotoByWorkid($work_id);
+        return $photoList;
+    }
+
+    public static function get_photo_by_id($photo_id) {
+        $ret = array();
+        if ($photo_id > 0)
+            $ret = PhotoDB::get_photo_by_id($photo_id);
+        return $ret;
+    }
+
+    public static function update_photo_status($photo_id, $photo_status, $ng_reason) {
+        $ret = false;
+        if (intval($photo_id) > 0) {
+            if (PhotoDB::update_photo_status($photo_id, $photo_status, $ng_reason)) {
+                $ret = true;
+            }
+        }
+        if ($photo_status == 100) {
+            PhotoDB::update_work($photo_id);
+        }
+        return $ret;
+    }
+
+    public static function update_photo_status_byids($pids, $status) {
+        $ret = false;
+        if (is_array($pids) && count($pids) > 0) {
+            if (PhotoDB::update_work_photo_status_byids($pids, $status)) {
+                $ret = true;
+            }
+            if ($status == 100) {//所有图片通过则把作品设为通过
+                foreach ($pids as $pid) {
+                    PhotoDB::update_work($pid);
+                }
+            }
+        }
+
+        return $ret;
+    }
+
+    public static function update_work_status($work_id, $status) {
+        $ret = false;
+        if ($work_id > 0) {
+            if (PhotoDB::update_work_status($work_id, $status) > 0) {
+                $ret = true;
+            }
+        }
+        return $ret;
+    }
+
+    public static function get_photos_by_useid($user_id) {
+        $photos = PhotoDB::get_photos_by_userid($user_id);
+        return $photos;
+    }
+
+    public static function statisPhoto($start, $end, $ng_status = false) {
+
+        $workInfo = PhotoDB::statisPhoto($start, $end, $ng_status);
+        $workInfo = self::statisFun($workInfo);
+        $prinfo = PhotoDB::statisPrPhoto($start, $end, $ng_status);
+        $workInfo["prcount"] = $prinfo["count"];
+        return $workInfo;
+    }
+
+    public static function statisPhoto2($start, $end, $ng_status = false) {
+
+        $ret = array();
+        $workInfo = PhotoDB::statisPhoto2($start, $end, $ng_status);
+        if (!empty($workInfo)) {
+            foreach ($workInfo as $k => $v) {
+                if ($v['group_id'] == 10000 || $v['group_id'] == 50000) {
+                    $ret[$v["sdate"]][$v['theme_id']] = $v['count'];
+                    $ret[$v["sdate"]][$v['group_id']]+=$v['count'];
+                } else {
+                    $ret[$v["sdate"]][$v['group_id']]+= $v['count'];
+                }
+            }
+        }
+        $prinfo = PhotoDB::statisPrPhoto2($start, $end, $ng_status);
+        if (!empty($prinfo)) {
+            foreach ($prinfo as $k => $v) {
+                $ret[$v["sdate"]]["prcount"] = $v["count"];
+            }
+        }
+        return $ret;
+    }
+
+    public static function statisNgPhoto($start, $end, $ng_status = false) {
+
+        $workInfo = PhotoDB::statisNgPhoto($start, $end);
+        $workInfo = self::statisFun($workInfo);
+        $prinfo = PhotoDB::statisPrPhoto($start, $end, $ng_status);
+        $workInfo["prcount"] = $prinfo["count"];
+        return $workInfo;
+    }
+
+    public static function statisNgPhoto2($start, $end, $ng_status = false) {
+
+        $ret = array();
+        $workInfo = PhotoDB::statisNgPhoto2($start, $end);
+        if (!empty($workInfo)) {
+            foreach ($workInfo as $k => $v) {
+                if ($v['group_id'] == 10000 || $v['group_id'] == 50000) {
+                    $ret[$v["sdate"]][$v['theme_id']] = $v['count'];
+                    $ret[$v["sdate"]][$v['group_id']]+=$v['count'];
+                } else {
+                    $ret[$v["sdate"]][$v['group_id']]+= $v['count'];
+                }
+            }
+        }
+        $prinfo = PhotoDB::statisPrPhoto2($start, $end, $ng_status);
+        if (!empty($prinfo)) {
+            foreach ($prinfo as $k => $v) {
+                $ret[$v["sdate"]]["prcount"] = $v["count"];
+            }
+        }
+        return $ret;
+    }
+
+    public static function statisPhotoYesterday($ng_status = false) {
+
+        $workInfo = PhotoDB::statisPhotoYesterday($ng_status);
+        $workInfo = self::statisFun($workInfo);
+        $prinfo = PhotoDB::statisPrPhotoYesterday($ng_status);
+        $xhinfo = PhotoDB::statisXHPhotoYesterday($ng_status);
+        $workInfo["prcount"] = $prinfo["count"];
+        $workInfo["xhcount"] = $xhinfo["count"];
+        return $workInfo; 
+    }
+ 
+    public static function statisPhotoYesterdayForMail() {
+
+        $workInfo = PhotoDB::statisNGPhotoForMail();
+        $workInfo = self::statisFun($workInfo);
+        $prinfo = PhotoDB::statisPrPhotoYesterday($ng_status);
+        $xhinfo = PhotoDB::statisXHPhotoYesterday($ng_status);
+        $workInfo["prcount"] = $prinfo["count"];
+        $workInfo["xhcount"] = $xhinfo["count"];
+        return $workInfo;
+    }
+
+    private static function statisFun($workInfo) {
+        $ret = array();
+        if (!empty($workInfo)) {
+            $total = 0;
+            foreach ($workInfo as $k => $v) {
+                $total+=$v['count'];
+                if ($v['group_id'] == 10000 || $v['group_id'] == 50000) {
+                    $ret[$v['theme_id']] = $v['count'];
+                    $ret[$v['group_id']]+=$v['count'];
+                } else {
+                    $ret[$v['group_id']]+= $v['count'];
+                }
+            }
+        }
+        $ret['total'] = $total;
+        return $ret;
+    }
+
+}

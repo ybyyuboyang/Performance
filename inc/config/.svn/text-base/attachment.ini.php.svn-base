@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * attachment.inc
+ *
+ * @package core
+ * @author Terry
+ * @access public
+ * @version v1.0 2013-04-01
+ */
+//附件根目录
+$_Attachment_Root = array(
+    'canon' => '/data/www/canonswj/hosts/uploadswj/'
+);
+
+//附件域名
+$_Attachment_DomainName = array(
+    'canon' => 'chai.photowoo.com/attachment/canon'
+);
+?>

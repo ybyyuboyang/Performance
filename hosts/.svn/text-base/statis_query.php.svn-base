@@ -1,0 +1,279 @@
+<?php
+set_time_limit(0);
+ini_set('memory_limit', '1024M');
+
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+include ROOT . '/biz/User.php';
+include ROOT . '/biz/Photo.php';
+include ROOT . '/biz/Works.php';
+include ROOT . '/biz/PrVisit.php';
+if (!Admin::check_login_status()) {
+    Tools::GshowMsg('', "login.php");
+    exit;
+}
+$loginname = $_SESSION['login_account'];
+
+$title = '数据统计';
+$menu = 'statis';
+
+$start = Tools::getValue("start");
+$end = Tools::getValue("end");
+
+$action = Tools::getValue("act");
+$days = round((strtotime($end) - strtotime($start)) / 3600 / 24);
+
+$userdata = User::statisUser2($start, $end);
+$workdata = Works::statisWork2($start, $end);
+$photodata = Photo::statisPhoto2($start, $end);
+$ngphotodata = Photo::statisNgPhoto2($start, $end, true);
+$visitData = PrVisit::getVisit2($start, $end);
+
+if (isset($action) && $action == "export") {
+    if ($_SESSION['login_account'] != "admin3") {
+        die("您当前登录用户不能导出数据！");
+    }
+    /** Include PHPExcel */
+    require_once ROOT . '/libs/PHPExcel.php';
+    require_once ROOT . '/libs/PHPExcel/Writer/Excel5.php';     // 用于其他低版本xls 
+    require_once ROOT . '/libs/PHPExcel/Writer/Excel2007.php'; // 用于 excel-2007 格式 
+    require_once ROOT . '/libs/PHPExcel/IOFactory.php';
+    $objPHPExcel = new PHPExcel();
+
+    $objPHPExcel->getActiveSheet()->setCellValue('A1', "日期"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('B1', "注册人数");
+    $objPHPExcel->getActiveSheet()->setCellValue('C1', "专业组(人文/生态/风景)");
+    $objPHPExcel->getActiveSheet()->setCellValue('D1', "专业组(新闻)"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('E1', "高校专业组");
+    $objPHPExcel->getActiveSheet()->setCellValue('F1', "青少专业组");
+    $objPHPExcel->getActiveSheet()->setCellValue('G1', "作品数量"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('H1', "人文");
+    $objPHPExcel->getActiveSheet()->setCellValue('I1', "生态");
+    $objPHPExcel->getActiveSheet()->setCellValue('J1', "风景"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('K1', "新闻");
+    $objPHPExcel->getActiveSheet()->setCellValue('L1', "高校");
+    $objPHPExcel->getActiveSheet()->setCellValue('M1', "青少");
+    $objPHPExcel->getActiveSheet()->setCellValue('N1', "照片数量"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('O1', "人文");
+    $objPHPExcel->getActiveSheet()->setCellValue('P1', "生态");
+    $objPHPExcel->getActiveSheet()->setCellValue('Q1', "风景"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('R1', "新闻");
+    $objPHPExcel->getActiveSheet()->setCellValue('S1', "高校");
+    $objPHPExcel->getActiveSheet()->setCellValue('T1', "青少");
+    $objPHPExcel->getActiveSheet()->setCellValue('U1', "NG照片数量"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('V1', "人文");
+    $objPHPExcel->getActiveSheet()->setCellValue('W1', "生态");
+    $objPHPExcel->getActiveSheet()->setCellValue('X1', "风景"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('Y1', "新闻");
+    $objPHPExcel->getActiveSheet()->setCellValue('Z1', "高校");
+    $objPHPExcel->getActiveSheet()->setCellValue('AA1', "青少");
+    $objPHPExcel->getActiveSheet()->setCellValue('AB1', "PR引导访问次数");
+    $objPHPExcel->getActiveSheet()->setCellValue('AC1', "PR引导用户注册数"); //设置列的值
+    $objPHPExcel->getActiveSheet()->setCellValue('AD1', "PR引导作品数");
+    $objPHPExcel->getActiveSheet()->setCellValue('AE1', "PR引导照片数");
+    $objPHPExcel->getActiveSheet()->setCellValue('AF1', "赞数");
+
+    $key = 2; //控制行数从第二行开始,标题已经占用了第一行
+    for ($index = 0; $index <= $days; $index++) {
+        $dkey = date("Ymd", strtotime("$start +$index day"));
+
+        $a = date("Y/m/d", strtotime("$start +$index day"));
+        $b = intval($userdata[$dkey][10000] + $userdata[$dkey][50000] + $userdata[$dkey][20000] + $userdata[$dkey][30000]);
+        $c = intval($userdata[$dkey][10000]);
+        $d = intval($userdata[$dkey][50000]);
+        $e = intval($userdata[$dkey][20000]);
+        $f = intval($userdata[$dkey][30000]);
+        $g = intval($workdata[$dkey][10001] + $workdata[$dkey][10002] + $workdata[$dkey][10002] + $workdata[$dkey][50000] + $workdata[$dkey][20000] + $workdata[$dkey][30000]);
+        $h = intval($workdata[$dkey][10001]);
+        $i = intval($workdata[$dkey][10002]);
+        $j = intval($workdata[$dkey][10003]);
+        $k = intval($workdata[$dkey][50001]);
+        $l = intval($workdata[$dkey][20000]);
+        $m = intval($workdata[$dkey][30000]);
+        $n = intval($photodata[$dkey][10001] + $photodata[$dkey][10002] + $photodata[$dkey][10002] + $photodata[$dkey][50000] + $photodata[$dkey][20000] + $photodata[$dkey][30000]);
+        $o = intval($photodata[$dkey][10001]);
+        $p = intval($photodata[$dkey][10002]);
+        $q = intval($photodata[$dkey][10003]);
+        $r = intval($photodata[$dkey][50001]);
+        $s = intval($photodata[$dkey][20000]);
+        $t = intval($photodata[$dkey][30000]);
+        $u = intval($ngphotodata[$dkey][10001] + $ngphotodata[$dkey][10002] + $ngphotodata[$dkey][10002] + $ngphotodata[$dkey][50000] + $ngphotodata[$dkey][20000] + $ngphotodata[$dkey][30000]);
+        $v = intval($ngphotodata[$dkey][10001]);
+        $w = intval($ngphotodata[$dkey][10002]);
+        $x = intval($ngphotodata[$dkey][10003]);
+        $y = intval($ngphotodata[$dkey][50001]);
+        $z = intval($ngphotodata[$dkey][20000]);
+        $aa = intval($ngphotodata[$dkey][30000]);
+        $ab = intval($visitData[$dkey]); 
+        $ac = intval($userdata[$dkey]["prcount"]);
+        $ad = intval($workdata[$dkey]["prcount"]);
+        $ae = intval($photodata[$dkey]["prcount"]);
+        $af = intval($workdata[$dkey]["tgoodnum"]);
+
+        $objPHPExcel->getActiveSheet()->setCellValue('a' . $key, "$a");
+        $objPHPExcel->getActiveSheet()->setCellValue('b' . $key, "$b");
+        $objPHPExcel->getActiveSheet()->setCellValue('c' . $key, "$c");
+        $objPHPExcel->getActiveSheet()->setCellValue('d' . $key, "$d");
+        $objPHPExcel->getActiveSheet()->setCellValue('e' . $key, "$e");
+        $objPHPExcel->getActiveSheet()->setCellValue('f' . $key, "$f");
+        $objPHPExcel->getActiveSheet()->setCellValue('g' . $key, "$g");
+        $objPHPExcel->getActiveSheet()->setCellValue('h' . $key, "$h");
+        $objPHPExcel->getActiveSheet()->setCellValue('i' . $key, "$i");
+        $objPHPExcel->getActiveSheet()->setCellValue('j' . $key, "$j");
+        $objPHPExcel->getActiveSheet()->setCellValue('k' . $key, "$k");
+        $objPHPExcel->getActiveSheet()->setCellValue('l' . $key, "$l");
+        $objPHPExcel->getActiveSheet()->setCellValue('m' . $key, "$m");
+        $objPHPExcel->getActiveSheet()->setCellValue('n' . $key, "$n");
+        $objPHPExcel->getActiveSheet()->setCellValue('o' . $key, "$o");
+        $objPHPExcel->getActiveSheet()->setCellValue('p' . $key, "$p");
+        $objPHPExcel->getActiveSheet()->setCellValue('q' . $key, "$q");
+        $objPHPExcel->getActiveSheet()->setCellValue('r' . $key, "$r");
+        $objPHPExcel->getActiveSheet()->setCellValue('s' . $key, "$s");
+        $objPHPExcel->getActiveSheet()->setCellValue('t' . $key, "$t");
+        $objPHPExcel->getActiveSheet()->setCellValue('u' . $key, "$u");
+        $objPHPExcel->getActiveSheet()->setCellValue('v' . $key, "$y");
+        $objPHPExcel->getActiveSheet()->setCellValue('w' . $key, "$w");
+        $objPHPExcel->getActiveSheet()->setCellValue('x' . $key, "$x");
+        $objPHPExcel->getActiveSheet()->setCellValue('y' . $key, "$y");
+        $objPHPExcel->getActiveSheet()->setCellValue('z' . $key, "$z");
+        $objPHPExcel->getActiveSheet()->setCellValue('aa' . $key, "$aa");
+        $objPHPExcel->getActiveSheet()->setCellValue('ab' . $key, "$ab");
+        $objPHPExcel->getActiveSheet()->setCellValue('ac' . $key, "$ac");
+        $objPHPExcel->getActiveSheet()->setCellValue('ad' . $key, "$ad");
+        $objPHPExcel->getActiveSheet()->setCellValue('ae' . $key, "$ae");
+        $objPHPExcel->getActiveSheet()->setCellValue('af' . $key, "$af");
+
+        $key++;
+    }
+    $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel5');
+
+    $filename = '数据总览(' . $start . "~" . $end . ').xls';
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+    $objWriter->save('php://output');
+    exit;
+}
+?>
+
+<?php include ROOT . 'include/header.php'; ?>
+<div class="main">
+    <?php include ROOT . 'include/menu.php'; ?>
+    <div class="wrapper">
+        <div class="titCounts">
+            <h2>作品统计报表</h2>
+        </div>
+        <div class="filterBox dataCountFilter">
+            <ul>              
+                <li class="search">
+                    <span class="tit">按日统计：</span>
+                    <input type="text" name="start_time" id="start" value="<?= $start ?>">&nbsp;至&nbsp;<input type="text"  name="end_time" value="<?= $end ?>"  id="end"/>
+                    <span class="btnConfirm"><a href="javascript:queryStaticsData();">确定</a></span><a href="reject_photo_statis.php" class="dr">查看问题照片列表</a>
+                </li>
+            </ul>
+        </div>
+        <div class="dataCountList">
+            <h3><a class="btnAll fr" href="javascript:exportData(<?= Admin::check_export() ?>);">Excel导出</a>数据总览</h3>
+            <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                    <th width="6%">日期</th>
+                    <th width="4%">注册人数</th>
+                    <th width="8%">专业组(人文/生态/风景)</th>
+                    <th width="5%">专业组(新闻)</th>
+                    <th width="5%"> 高校专业组</th>
+                    <th width="5%">青少专业组</th>
+
+                    <th width="4%">作品数量</th>
+                    <th width="3%">人文</th>
+                    <th width="3%">生态</th>
+                    <th width="3%">风景</th>
+                    <th width="3%">新闻</th>
+                    <th width="3%">高校</th>
+                    <th width="3%">青少</th>
+
+                    <th width="4%">照片数量</th>
+                    <th width="3%">人文</th>
+                    <th width="3%">生态</th>
+                    <th width="3%">风景</th>
+                    <th width="3%">新闻</th>
+                    <th width="3%">高校</th>
+                    <th width="3%">青少</th>
+
+                    <th width="4%">NG数量</th>
+                    <th width="3%">人文</th>
+                    <th width="3%">生态</th>
+                    <th width="3%">风景</th>
+                    <th width="3%">新闻</th>
+                    <th width="3%">高校</th>
+                    <th width="3%">青少</th>
+
+                    <th width="5%">PR引导访问次数</th>
+                    <th width="5%">PR引导用户注册数</th>
+                    <th width="5%">PR引导作品数</th>
+                    <th width="5%">PR引导照片数</th>
+                    <th width="3%">赞数</th>
+                </tr>  
+                <?php
+                for ($i = 0; $i <= $days; $i++) {
+                    $key = date("Ymd", strtotime("$start +$i day"));
+                    ?>
+                    <tr>
+                        <td><?= date("Y/m/d", strtotime("$start +$i day")) ?></td>
+                        <td><?= intval($userdata[$key][10000] + $userdata[$key][50000] + $userdata[$key][20000] + $userdata[$key][30000]) ?></td>
+                        <td><?= intval($userdata[$key][10000]) ?></td>
+                        <td><?= intval($userdata[$key][50000]) ?></td>
+                        <td><?= intval($userdata[$key][20000]) ?></td>
+                        <td><?= intval($userdata[$key][30000]) ?></td>
+
+                        <td><?= intval($workdata[$key][10001] + $workdata[$key][10002] + $workdata[$key][10003] + $workdata[$key][50001] + $workdata[$key][20000] + $workdata[$key][30000]) ?></td>
+                        <td><?= intval($workdata[$key][10001]) ?></td>
+                        <td><?= intval($workdata[$key][10002]) ?></td>
+                        <td><?= intval($workdata[$key][10003]) ?></td>
+                        <td><?= intval($workdata[$key][50001]) ?></td>
+                        <td><?= intval($workdata[$key][20000]) ?></td>
+                        <td><?= intval($workdata[$key][30000]) ?></td>
+
+                        <td><?= intval($photodata[$key][10001] + $photodata[$key][10002] + $photodata[$key][10003] + $photodata[$key][50001] + $photodata[$key][20000] + $photodata[$key][30000]) ?></td>
+                        <td><?= intval($photodata[$key][10001]) ?></td>
+                        <td><?= intval($photodata[$key][10002]) ?></td>
+                        <td><?= intval($photodata[$key][10003]) ?></td>
+                        <td><?= intval($photodata[$key][50001]) ?></td>
+                        <td><?= intval($photodata[$key][20000]) ?></td>
+                        <td><?= intval($photodata[$key][30000]) ?></td>
+
+                        <td><?= intval($ngphotodata[$key][10001] + $ngphotodata[$key][10002] + $ngphotodata[$key][10003] + $ngphotodata[$key][50001] + $ngphotodata[$key][20000] + $ngphotodata[$key][30000]) ?></td>
+                        <td><?= intval($ngphotodata[$key][10001]) ?></td>
+                        <td><?= intval($ngphotodata[$key][10002]) ?></td>
+                        <td><?= intval($ngphotodata[$key][10003]) ?></td>
+                        <td><?= intval($ngphotodata[$key][50001]) ?></td>
+                        <td><?= intval($ngphotodata[$key][20000]) ?></td>
+                        <td><?= intval($ngphotodata[$key][30000]) ?></td>
+
+                        <td><?= intval($visitData[$key]) ?></td>
+                        <td><?= intval($userdata[$key]["prcount"]) ?></td>
+                        <td><?= intval($workdata[$key]["prcount"]) ?></td>
+                        <td><?= intval($photodata[$key]["prcount"]) ?></td>
+                        <td><?= intval($workdata[$key]["tgoodnum"]) ?></td>
+                    </tr>
+                <?php } ?>
+            </table>
+
+        </div>
+    </div>
+</div>
+<?php include ROOT . 'include/footer.php'; ?>
+</body>
+</html>
+<script type="text/javascript" src="js/listtable.js"></script>
+<script type="text/javascript" src="js/photo.js"></script>
+<script type="text/javascript" src="js/date/jquery.datepick.js"></script>
+<script type="text/javascript" src="js/date/jquery.datepick-zh-CN.js"></script>
+<link href="js/date/jquery.datepick.css" rel="stylesheet" type="text/css" />
+<script language="JavaScript">
+    $(document).ready(function() {
+        $('#start,#end').datepick({dateFormat: 'yy-mm-dd'});
+        listTable.filter.start = '<?php echo $startdate ?>';
+        listTable.filter.end = '<?php echo $enddate ?>';
+    });
+
+</script>

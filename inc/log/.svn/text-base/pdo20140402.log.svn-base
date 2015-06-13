@@ -1,0 +1,2 @@
+[1045][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[28000] [1045] Access denied for user 'canon2014'@'218.241.141.234' (using password: YES)pdo
+[1045][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[28000] [1045] Access denied for user 'root'@'218.241.141.234' (using password: YES)pdo

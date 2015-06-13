@@ -1,0 +1,128 @@
+<?php
+
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+include ROOT . '/biz/Photo.php';
+include ROOT . '/biz/User.php';
+include ROOT . '/biz/Works.php';
+include ROOT . '/biz/Certify.php';
+include ROOT . '/biz/Msg.php';
+include ROOT . '/biz/Workindex.php';
+if (!Admin::check_login_status()) {
+    Tools::GshowMsg('', "login.php");
+    exit;
+}
+$loginname = $_SESSION['login_account'];
+$act = Tools::getValue("act", "");
+if (isset($act) && $act == 'ng') { //NG
+    $photo_id = Tools::getValue("photo_id", 0);
+    $ng_reason = Tools::getValue("ng_reason", "");
+    $photoinfo = Photo::get_photo_by_id($photo_id);
+    $up_status = $photoinfo["photo_status"] == 100 ? 300 : 200;
+    if (Photo::update_photo_status($photo_id, $up_status, $ng_reason)) {
+        //把作品状态设为NG
+        if ($up_status == 300)
+            Photo::update_work_status($photoinfo["work_id"], 300);
+        die('success');
+    } else {
+        die('failure');
+    }
+} else if ($act == 'batch_approved') {
+    $ids = Tools::getValue("ids", "");
+    $photo_status = 100; //审核通过
+    $ids_array = explode("#", trim($ids, "#"));
+    if (Photo::update_photo_status_byids($ids_array, $photo_status)) {
+        die('success');
+    } else {
+        die('failure');
+    }
+} else if ($act == 'approved') {//Admin2单个设为通过
+    $photo_id = Tools::getValue("photo_id", 0);
+    $photo_status = 100;
+    if (Photo::update_photo_status($photo_id, $photo_status, $ng_reason)) {
+        die('success');
+    } else {
+        die('failure');
+    }
+} else if ($act == 'cancel_approved') {//通过的设置为待NG状态
+    $photo_id = Tools::getValue("photo_id", 0);
+    $photo_status = 200;
+    if (Photo::update_photo_status($photo_id, $photo_status, null)) {
+        die('success');
+    } else {
+        die('failure');
+    }
+} else if ($act == 'batch_ng_confrim') {
+    $ids = Tools::getValue("ids", "");
+    $ngs = Tools::getValue("ngs", "");
+    $photo_status = 300; //确定NG
+    $ids_array = explode("#", trim($ids, "#"));
+    $ngs_array = explode("#", trim($ngs, "#"));
+    $id_ng_array = array();
+    foreach ($ids_array as $k => $v) {
+        $id_ng_array[$v] = $ngs_array[$k];
+    }
+    $photoinfo = PhotoDB::get_photos_by_ids($ids_array);
+    /* 此处为发送消息 */
+    if (!empty($photoinfo)) {
+        $title_format = "您的作品《%s》有可能出现问题，导致不能正常参赛！";
+        $msg_format = "您在%s上传的作品《%s》中第%d张由于“%s”未通过审核，建议您更换照片再次参赛。";
+        foreach ($photoinfo as $k => $v) {
+            //把图片状态设为NG
+            $ng_index = $id_ng_array[$v["photo_id"]];
+            Photo::update_photo_status($v["photo_id"], 300, $ng_index);
+            //把作品状态设为NG
+            Photo::update_work_status($v["work_id"], 300);
+
+            $paras = array();
+            $paras["user_id"] = $v["user_id"];
+            $paras["mailer"] = "管理员";
+            $paras["mail_type"] = 1;
+            $ng_reason_index = $ng_index > 0 ? $ng_index : 1;
+            $sort_num = $v["sort_num"] > 0 ? $v["sort_num"] : 1;
+            $title = sprintf($title_format, $v["work_name"]);
+            $msg = sprintf($msg_format, $v["create_at"], $v["work_name"], $sort_num, ConfBase::$ng_reason[$ng_reason_index]);
+            $paras["title"] = $title;
+            $paras["msg"] = $msg;
+            Msg::add_msg($paras);
+        }
+        die('success');
+    } else {
+        die('failure');
+    }
+} else if ($act == 'update_info') {//admin3才有的权限
+    $is_edit = in_array($loginname, array("admin2", "admin3")) ? true : false;
+    if ($is_edit) {
+        $userinfos = Tools::getValue("user");
+        if (isset($userinfos)) {
+            $result = User::modi_user_info($userinfos);
+            echo($result);
+        }
+        $workinfos = Tools::getValue("work");
+        if (isset($workinfos) && $result > -1) {
+            Works::modi_work_info($workinfos);
+        }
+        $workindex = Tools::getValue("workindex");
+        if (isset($workindex) && $result > -1 && $workindex["is_change"] == 1) {
+            Workindex::post_work_index($workindex);
+        }
+    }
+} else if ($act == 'del_certify') {//admin3才有的权限
+    $is_edit = in_array($loginname, array("admin2", "admin3")) ? true : false;
+    if ($is_edit) {
+        $did = Tools::getValue("did", 0);
+        if (Certify::delete_certify_by_id($did)) {
+            die('success');
+        } else {
+            die('failure');
+        }
+    }
+} else if ($act == 'refresh') {//仅为保持session用
+    die('success');
+}
+
+
+
+
+
+    

@@ -1,0 +1,27 @@
+<?php
+
+include_once ROOT . '/dat/PrVisitDB.php';
+
+class PrVisit {
+
+    public static function getVisit($start = "", $end = "") {
+        if ($start == "" && $end == "")
+            $start = $end = date("Y-m-d", strtotime("-1 day"));
+        $data = PrVisitDB::statisVisit($start, $end);
+        $count = $data["count"] > 0 ? $data["count"] : 0;
+        return $count;
+    }
+
+    public static function getVisit2($start, $end) {
+        $ret = array();
+        $data = PrVisitDB::statisVisit2($start, $end);
+        if (!empty($data)) {
+            foreach ($data as $v) {
+                $ret[$v['sdate']] = $v['count'];
+            }
+        }
+        return $ret;
+    }
+
+}
+

@@ -1,0 +1,31 @@
+<?php
+
+include_once ROOT . "/libs/DB.php";
+
+class MsgDB {
+
+    //private static $user_msg = 'id,user_id,mailer,mail_type,title,msg,is_view,is_delete,create_at,update_at';
+
+    /*     * *
+     * 插入消息
+     * @param $post
+     * 注：插入方式有待完善，先这么着吧
+     */
+
+    public static function add_msg($post) {
+
+        $sql = 'INSERT INTO user_msg (user_id, mailer, mail_type, title, msg,create_at,update_at)VALUES(:user_id, :mailer, :mail_type, :title,:msg, NOW(),NOW())';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'user_id' => $post['user_id'],
+            'mailer' => $post['mailer'],
+            'mail_type' => $post['mail_type'],
+            'title' => $post['title'],
+            'msg' => $post['msg'],
+        );
+        $db = DB::getInstance($dbcfg);
+        $tmp = $db->affect_num($sql, $params);
+        return $tmp;
+    }
+
+}

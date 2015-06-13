@@ -1,0 +1,154 @@
+<?php
+
+include_once ROOT . '/dat/WorkDB.php';
+
+class Works {
+
+    public static function modi_work_info($post) {
+        $work_id = $post['work_id'];
+        $result = WorkDB::modi_work_info($work_id, $post);
+        return $result;
+    }
+
+    public static function get_tag_by_work($work_id) {
+        $restring = "";
+        $result = WorkDB::get_tag_by_work($work_id);
+        if ($result) {
+            $restring = $result['tagname'];
+        }
+        return $restring;
+    }
+
+    public static function statisWork($start, $end) {
+
+        $workInfo = WorkDB::statisWork($start, $end);
+        $prwork = WorkDB::statisPrWork($start, $end);
+        $workInfo = self::statisFun($workInfo);
+        $workInfo["prcount"] = $prwork["count"];
+        $temp = WorkDB::statisWorkGoodNum($start, $end);
+        $workInfo["tgoodnum"] = $temp["tgoodnum"];
+        return $workInfo;
+    }
+
+    public static function statisWork2($start, $end) {
+
+        $workInfo = WorkDB::statisWork2($start, $end);
+        if (!empty($workInfo)) {
+            foreach ($workInfo as $k => $v) {
+                if ($v['group_id'] == 10000 || $v['group_id'] == 50000)
+                    $ret[$v['sdate']][$v['theme_id']] = $v['count'];
+                else
+                    $ret[$v['sdate']][$v['group_id']] = $v['count'];
+            }
+        }
+        $prwork = WorkDB::statisPrWork2($start, $end);
+        if (!empty($prwork)) {
+            foreach ($prwork as $k => $v) {
+                $ret[$v["sdate"]]["prcount"] = $v["count"];
+            }
+        }
+
+        $temp = WorkDB::statisWorkGoodNum2($start, $end);
+        if (!empty($temp)) {
+            foreach ($temp as $k => $v) {
+                $ret[$v["sdate"]]["tgoodnum"] = $v["tgoodnum"];
+            }
+        }
+        return $ret;
+    }
+
+    public static function statisWorkYesterday() {
+
+        $workInfo = WorkDB::statisWorkYesterday();
+        $workInfo = self::statisFun($workInfo);
+
+        $prwork = WorkDB::statisPrWorkYesterday();
+        $workInfo["prcount"] = $prwork["count"];
+
+        $temp = WorkDB::statisYesterdayWorkGoodNum();
+        $workInfo["tgoodnum"] = $temp["tgoodnum"];
+        return $workInfo;
+    }
+
+    public static function getAwardWorks($paras) {
+
+        $works = WorkDB::getAwardWorks($paras);
+        return $works;
+    }
+
+    /* 根据UID获取其佳作 */
+
+    public static function getAwardWorksByUid($uid) {
+        $ret = array();
+        if ($uid > 0)
+            $ret = WorkDB::getAwardWorksByUid($uid);
+        return $ret;
+    }
+
+    public static function get_info_by_workid($work_id) {
+        $ret = array();
+        if ($work_id > 0)
+            $ret = WorkDB::getInfoByWorkid($work_id);
+        return $ret;
+    }
+
+    private static function statisFun($workInfo) {
+        $ret = array();
+        if (!empty($workInfo)) {
+            $total = 0;
+            foreach ($workInfo as $k => $v) {
+                $total+=$v['count'];
+                if ($v['group_id'] == 10000 || $v['group_id'] == 50000)
+                    $ret[$v['theme_id']] = $v['count'];
+                else
+                    $ret[$v['group_id']] = $v['count'];
+            }
+        }
+        $ret['total'] = $total;
+        return $ret;
+    }
+
+    //add by liruifeng
+    public static function getOutInfo() {
+
+        $data = array();
+        $end_date = date('Y-m-d').' 00:00:00';
+        //$end_date = '2014-05-08 00:00:00';
+        $start_date = date('Y-m-d', strtotime($end_date) - 86400).' 00:00:00';
+        
+        //$end_date = '2014-04-30 00:00:00';
+        //$start_date = '2014-04-23 00:00:00';
+        
+        $tmp = WorkDB::getOutUser($start_date, $end_date); //所有昨天摄影协会注册人数
+        $tt = array(
+            'total' => 0,
+            '10001' => '-',
+            '10002' => '-',
+            '10003' => '-',
+        );
+        $tt['total'] = $tmp['cnt'];
+        $data['regInfo'] = $tt;
+
+        $tt = array(
+            'total' => 0,
+            '10001' => 0,
+            '10002' => 0,
+            '10003' => 0,
+        );
+        $data['joinUserInfo'] = $tt;
+        $data['PhotoNums'] = $tt;
+        $data['NgPhotoNums'] = $tt;
+        foreach ($tt as $key => $row) {
+            $tmp = WorkDB::getJoinOutUser($start_date, $end_date, $key); //所有昨天摄影协会注册人数
+            $data['joinUserInfo'][$key] =  intval($tmp['cnt']);
+            
+            $tmp = WorkDB::getJoinPhotoNum($start_date, $end_date, $key); //所有昨天摄影协会注册人数
+            $data['PhotoNums'][$key] = intval($tmp['cnt']);
+            
+            $tmp = WorkDB::getNGPhotoNum($start_date, $end_date, $key); //所有昨天摄影协会注册人数
+            $data['NgPhotoNums'][$key] = intval($tmp['cnt']);
+        }
+        return $data;
+    }
+
+}

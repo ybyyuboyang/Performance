@@ -1,0 +1,621 @@
+<?php
+/**
+ * 附件管理
+ * @package core
+ * @access public
+ * @author terry
+ * @version v1.0 2011-02-10
+ */
+
+/**
+ * 附件管理
+ * @package core
+ * @access public
+ * @author terry
+ * @version v1.0 2011-02-10
+ */
+error_reporting (E_ALL & ~E_NOTICE);
+
+class Core_Attachment
+{
+	private $_serviceName;
+
+	public function __construct($serviceName)
+	{
+		if ($serviceName) $this->_serviceName = $serviceName;
+	}
+	
+	/**
+	 * 读取配置
+	 *
+	 * @param string $key
+	 * @param string $serviceName
+	 * @param bool $isSingle
+	 * @return string
+	 */
+	public function loadConfig($key, $serviceName = '')
+	{
+		if (!$serviceName){
+			$serviceName = $this->_serviceName;
+		}
+		
+		$configFile = ROOT . '/config/attachment.ini.php';
+
+		if (file_exists($configFile)){
+			require($configFile);
+			$config = $$key;
+			if ($serviceName){
+				return $config[$serviceName];
+			}else{
+				return $config;
+			}
+		}else{
+			return false;
+		}
+	}
+	
+	/**
+	 * 获取附件根目录
+	 *
+	 * 存储路径格式：/根目录/服务名/项目名/年/月/日/文件名
+	 * 例如：/www/service/attachment/cbcreport/article/2010/05/21/filename.jpg
+	 * $itemName 是附件类型名称，如target、archive
+	 * 本方法仅返回：/www/cbcreport/data
+	 *
+	 * @access public
+	 * @param $itemName
+	 * @return string
+	 */
+	public function getRootPath()
+	{
+		return $this->loadConfig('_Attachment_Root');
+	}
+
+	/**
+	 * 获取附件路径
+	 *
+	 * 存储路径格式：/根目录/服务名/项目名/年/月/日/文件名
+	 * 例如：/www/service/attachment/cbcreport/article/2011/02/21/filename.jpg
+	 * 本方法仅返回：article/2011/02/21
+	 *
+	 * @param string $itemName
+	 * @return string
+	 */
+	public function getFilePath($itemName)
+	{
+		//root path
+		$rootPath = strtolower($this->getRootPath());
+		
+		if (!is_dir($rootPath)){
+			mkdir($rootPath, 0755);
+		}
+		
+		//item
+		$itemName = strtolower($itemName);
+		$itemPath = $rootPath . $itemName;
+		if (!is_dir($itemPath)){
+			mkdir($itemPath, 0755);
+		}
+		//date
+		$filePath = $itemPath . '/' . date('Y');
+		if (!is_dir($filePath)){
+			mkdir($filePath, 0755);
+		}
+		$filePath = $filePath . '/' . date('m');
+		if (!is_dir($filePath)){
+			mkdir($filePath, 0755);
+		}
+		$filePath = $filePath . '/' . date('d');
+		if (!is_dir($filePath)){
+			mkdir($filePath, 0755);
+		}
+		return str_replace($rootPath, '', $filePath) . '/';
+	}
+	
+	/**
+	 * 获取附件文件名
+	 *
+	 * @param string $fileName
+	 * @return string
+	 */
+	public function getNewFileName($fileName)
+	{
+		//获取文件扩展名
+		$ext = strtolower(end(explode('.', $fileName)));
+	
+		//新文件名
+		list($usecond, $second) = explode(' ', microtime());
+		$usecond = $second . substr($usecond, 2, 4);
+		$newFileName = $usecond . '.' . $ext;
+	
+		return $newFileName;
+	}
+	
+	/**
+	 * 保存文件
+	 * 
+	 * @param array $file
+	 * @param string $itemName
+	 * @param string @fileName
+	 * @return string
+	 */
+	public function saveFile($file, $itemName, $fileName = '')
+	{
+		if ($file['error'] != 0 || !$itemName){
+			return false;
+		}
+		
+		$rootPath = $this->getRootPath();
+		$filePath = $this->getFilePath($itemName);
+		if (!$fileName){
+			$fileName = $this->getNewFileName($file['name']);
+		}
+		
+		rename($file['tmp_name'], $rootPath . $filePath . $fileName);
+		
+		$fileFullPath = $filePath . $fileName;
+		
+		return $fileFullPath;
+	}
+	
+	/**
+	 * 下载远程文件并保存
+	 *
+	 * @param string $fileUrl
+	 * @param string $itemName
+	 * @param string $fileName
+	 * @return string
+	 */
+	public function getRemoteFile($fileUrl, $itemName, $fileName = '', $isReturnUrl = true)
+	{
+		$rootPath = $this->getRootPath();
+		$filePath = $this->getFilePath($itemName);
+		if (!$fileName){
+			$fileName = $this->getNewFileName($fileUrl);
+		}
+		
+		$content = file_get_contents($fileUrl);
+		file_put_contents($rootPath . $filePath . $fileName, $content);
+		
+		if ($isReturnUrl){
+			$domainName = 'http://' . $this->getDomainName();
+			return $domainName . $filePath . $fileName;
+		}else{
+			return $filePath . $fileName;
+		}
+	}
+
+	/**
+	 * 获取附件访问域名
+	 *
+	 * 返回结果不包含：http://, 如：www.hotkeypower.com
+	 *
+	 * @return string
+	 */
+	public function getDomainName($serviceName = '')
+	{
+		return $this->loadConfig('_Attachment_DomainName', $serviceName);
+	}
+	
+	/**
+	* 删除附件
+	*
+	* 参数$filePath,如：attachment/article/2010/05/25/1274769894.png
+	*
+	* @param string $filePath
+	* @return bool
+	*/
+	public function removeFile($filePath)
+	{
+		$rootPath = $this->getRootPath();
+		if (file_exists($rootPath . $filePath)){
+			unlink($rootPath . $filePath);
+		}
+		return true;
+	}
+	
+	/**
+	 * 制作缩略图（图片上传过程中完成）
+	 *
+	 * 上传图片时直接制作缩略图
+	 * 
+	 * @param string $itemName
+	 * @param array $file
+	 * @param int $targetWidth
+	 * @param int $targetHeight
+	 * @param bool $isReserveSourceFile
+	 * @return string
+	 */
+	public function saveThumbImage($itemName, $file, $targetWidth, $targetHeight, $isReserveSourceFile = false)
+	{
+		$sourceFile = $file['tmp_name'];
+		
+		$rootPath = $this->getRootPath();
+		$filePath = $this->getFilePath($itemName);
+		$fileName = $this->getNewFileName($file['name']);
+		$targetFile = $rootPath . $filePath . $fileName;
+		
+		$this->makeThumbImage($sourceFile, $targetFile, $targetWidth, $targetHeight, $isReserveSourceFile);
+		
+		$fileFullPath = $filePath . $fileName;
+		
+		return $fileFullPath;
+	}
+	
+	/**
+	 * 制作缩略图
+	 *
+	 * 自动缩图$sourceFile原文件(大图)；$targetFile目标文件(小图)；$targetWidth,$targetHeight是小图的宽，高。
+	 * 
+	 * @access public
+	 * @param string $sourceFile
+	 * @param string $targetFile
+	 * @param int $targetWidth
+	 * @param int $targetHeight
+	 */
+	public function makeThumbImageV1($sourceFile, $targetFile, $targetWidth = 0, $targetHeight = 0, $isReserveSourceFile = false)
+	{
+		$data = getimagesize($sourceFile);
+		$scale  = $data[0] / $data[1];
+		$newscale  = $targetWidth / $targetHeight;
+		
+		if ($data[0] <= $targetWidth && $data[1] <= $targetHeight){
+			$width = $data[0];
+			$height = $data[1];
+		}else{
+			if ($scale <= $newscale ){
+				$width = $targetHeight * $scale ;
+				$height = $targetHeight;
+			}else{
+				$width = $targetWidth;
+				$height = $targetWidth / $scale ;
+			}
+		}
+		
+		switch ($data[2]) 
+		{
+			case 1: //图片类型，1是GIF图
+				$image = @imagecreatefromgif($sourceFile);
+				break;
+			case 2: //图片类型，2是JPG图
+				$image = @imagecreatefromjpeg($sourceFile);
+				break;
+			case 3: //图片类型，3是PNG图
+				$image = @imagecreatefrompng($sourceFile);
+				break;
+			case 6:
+				$image = @imagecreatefromxbm($sourceFile);
+				break;
+		}
+	
+		$targetWidth = ceil($width);
+		$targetHeight = ceil($height);
+		
+		$sourceWidth = ImageSX($image);
+		$sourceHeight = ImageSY($image);
+		
+		$ni = imagecreatetruecolor($targetWidth,$targetHeight);
+		imagecopyresampled($ni, $image, 0, 0, 0, 0, $targetWidth, $targetHeight, $sourceWidth, $sourceHeight);
+		
+		$text_color = imagecolorallocate ($ni, 255, 255, 255);
+		
+		$text = ($targetWidth > 250) ? 'www.xinpindao.com' : '';
+		$textX = ($targetWidth > 250) ? ($targetWidth - 230) : ($targetWidth - 30);
+		$textY = ($targetHeight > 90) ? ($targetHeight - 20) : ($targetHeight - 15);
+		imagestring ($ni, 2, $textX, $textY, $text, $text_color);
+		
+		ImageJpeg($ni, $targetFile);
+		
+		//在显示图片时用，把注释取消，可以直接在页面显示出图片。
+		//ImageJpeg($ni);
+		
+		//删除原图
+		if (!$isReserveSourceFile){
+			unlink($sourceFile);
+		}
+		return true;
+	}
+	
+	
+	/*
+	 * 制作缩略图
+	 * 水印支持图片或文字
+	 * 参数：
+	 *      $sourceFile		源图片文件，即需要加水印的图片，暂只支持GIF,JPG,PNG格式；
+	 *      $waterPosition	水印位置，有10种状态，0为随机位置；
+	 *                     	1为顶端居左，2为顶端居中，3为顶端居右；
+	 *						4为中部居左，5为中部居中，6为中部居右；
+	 *						7为底端居左，8为底端居中，9为底端居右；
+	 						默认为 9 
+	 *		$targetFile		目标图片文件，即添加水印后的目标文件
+	 *		$targetWidth	目标图片文件宽度，根据比例动态调整
+	 *		$targetHeight	目标图片文件高度，根据比例动态调整
+	 *      $waterFile		图片水印，即作为水印的图片，暂只支持GIF,JPG,PNG格式；
+	 *      $waterText		文字水印，即把文字作为为水印，支持UTF-8编码，支持中文；
+	 *      $textFont		文字大小，值为1、2、3、4或5，默认为5；
+	 *      $textColor		文字颜色，值为十六进制颜色值，默认为#FFFFFF(红色)；
+	 *
+	 * 注意：Support GD 2.0，Support FreeType、GIF Read、GIF Create、JPG 、PNG
+	 *      $waterFile 和 $waterText 不要同时使用，选其中之一即可，优先使用 $waterFile。
+	 *      当$waterFile有效时，参数$waterText、$textFont、$textColor均不生效。
+	 * 新频道水印规则：
+	 *		1．不加水印：当照片最终页或创意最终页中的照片或图片尺寸小于200*200（px）时，不添加水印。
+	 *		2．添加水印1：当照片最终页或创意最终页中的照片或图片尺寸大小在200*200与400*400之间时，添加水印1。
+	 *		3．添加水印2：当照片最终页或创意最终页中的照片或图片尺寸大小大于400*400时，添加水印2。
+	 *
+	 */
+	public function makeThumbImage($sourceFile, $targetFile, $targetWidth, $targetHeight, $isReserveSourceFile = false, $waterPosition = 9, $waterFile = '', $waterText = '', $textFont = 5, $textColor = '#FFFFFF', $margin = 5)
+	{
+	    $isWaterFile = false;
+	    $isTargetSmall = false;
+	    $errorMessage = "only support gif/jpg/png";
+		
+	    //读取图片
+	    if (!empty($sourceFile) && file_exists($sourceFile)){
+	        //取得背景图片的宽/高
+	        $sourceFileInfo = getimagesize($sourceFile);
+	        $sourceWidth = $sourceFileInfo[0];
+	        $sourceHeight = $sourceFileInfo[1];
+	        
+			$scale  = $sourceWidth / $sourceHeight;
+			$newScale  = $targetWidth / $targetHeight;
+			
+			if ($sourceWidth <= $targetWidth && $sourceHeight <= $targetHeight){
+				$width = $sourceWidth;
+				$height = $sourceHeight;
+			}else{
+				if ($scale <= $newScale ){
+					$width = $targetHeight * $scale ;
+					$height = $targetHeight;
+				}else{
+					$width = $targetWidth;
+					$height = $targetWidth / $scale ;
+				}
+			}
+			$targetWidth = ceil($width);
+			$targetHeight = ceil($height);
+			unset($width, $height);
+			
+			//取得图片的格式
+	        switch($sourceFileInfo[2]){
+	            case 1:
+	            	//gif
+	            	$sourceImage = imagecreatefromgif ($sourceFile);
+	            	break;
+	            case 2:
+	            	//jpeg
+	            	$sourceImage = imagecreatefromjpeg($sourceFile);
+	            	break;
+	            case 3:
+	            	//png
+	            	$sourceImage = imagecreatefrompng($sourceFile);
+	            	break;
+	            default:
+	            	die($errorMessage);
+	            	break;
+	        }
+	        
+	        $targetImage = imagecreatetruecolor($targetWidth, $targetHeight);
+			imagecopyresampled($targetImage, $sourceImage, 0, 0, 0, 0, $targetWidth, $targetHeight, $sourceWidth, $sourceHeight);
+			
+	    }
+		
+		//默认水印条件判断
+		if (!$waterFile && !$waterText){
+			$minSize = min($targetWidth, $targetHeight);
+			
+			if ($minSize < 200){
+				$isTargetSmall = true;
+			}elseif ($minSize >= 200 && $minSize < 400){
+				$waterFilePath = $this->loadConfig('_Watermark_Path', '', true);
+				$waterFile = ROOT. $waterFilePath . 'pic120x40.png';
+			}else{
+				$waterFilePath = $this->loadConfig('_Watermark_Path', '', true);
+				$waterFile = ROOT. $waterFilePath . 'pic200x60.png';
+			}
+		}
+		
+		//读取水印
+	    if (!$isTargetSmall && !empty($waterFile) && file_exists($waterFile)){
+	        $isWaterFile = true;
+	        //取得水印图片的宽/高
+	        $waterFileInfo = getimagesize($waterFile);
+	        $waterWidth = $waterFileInfo[0];
+	        $waterHeight = $waterFileInfo[1];
+			
+			//取得水印图片的格式
+	        switch($waterFileInfo[2]){
+	            case 1:
+	            	$waterImage = imagecreatefromgif ($waterFile);
+	            	break;
+	            case 2:
+	            	$waterImage = imagecreatefromjpeg($waterFile);
+	            	break;
+	            case 3:
+	            	$waterImage = imagecreatefrompng($waterFile);
+	            	break;
+	            default:
+	            	die($errorMessage);
+	            	break;
+	        }
+	    }
+
+	    //水印位置
+	    //图片水印
+	    if ($isWaterFile){
+	        $width = $waterWidth;
+	        $height = $waterHeight;
+	    }elseif ($waterText){
+	    	//文字水印
+	    	//取得使用 TrueType 字体的文本的范围
+	        //$temp = imagettfbbox(ceil($textFont * 2.5), 0, './cour.ttf', $waterText);
+			$temp = imagettfbbox(ceil($textFont * 1), 0, '/usr/share/fonts/zh_CN/TrueType/zysong.ttf', $waterText);
+	        $width = $temp[2] - $temp[6];
+	        $height = $temp[3] - $temp[7];
+	        unset($temp);
+	    }
+	    
+	    if (($targetWidth < $width) || ($targetHeight < $height)){
+	        die('Image size is too small');
+	    }
+	    
+	    //水印图片位置
+	    switch($waterPosition){
+	        case 0:
+	        	//随机
+	            $posX = rand(0, ($targetWidth - $width));
+	            $posY = rand(0, ($targetHeight - $height));
+	            break;
+	        case 1:
+	        	//1为顶端居左
+	            $posX = 0;
+	            $posY = 0;
+	            break;
+	        case 2:
+	        	//2为顶端居中
+	            $posX = ($targetWidth - $width) / 2;
+	            $posY = 0;
+	            break;
+	        case 3:
+	        	//3为顶端居右
+	            $posX = $targetWidth - $width;
+	            $posY = 0;
+	            break;
+	        case 4:
+				//4为中部居左
+				$posX = 0;
+				$posY = ($targetHeight - $height) / 2;
+	            break;
+	        case 5:
+	        	//5为中部居中
+	            $posX = ($targetWidth - $width) / 2;
+	            $posY = ($targetHeight - $height) / 2;
+	            break;
+	        case 6:
+	        	//6为中部居右
+	            $posX = $targetWidth - $width;
+	            $posY = ($targetHeight - $height) / 2;
+	            break;
+	        case 7:
+	        	//7为底端居左
+	            $posX = 0;
+	            $posY = $targetHeight - $height;
+	            break;
+	        case 8:
+	        	//8为底端居中
+	            $posX = ($targetWidth - $width) / 2;
+	            $posY = $targetHeight - $height;
+	            break;
+	        case 9:
+	        	//9为底端居右
+	            $posX = $targetWidth - $width;
+	            $posY = $targetHeight - $height;
+	            break;
+	        default:
+	        	//默认为底端居右
+	            $posX = $targetWidth - $width;
+	            $posY = $targetHeight - $height;
+	            break;
+	    }
+		$posX = $posX - $margin;
+		$posY = $posY - $margin;
+		
+	    //设定图像的混色模式
+	    imagealphablending($sourceImage, true);
+		
+		//添加水印
+	    if ($isWaterFile){
+	    	//拷贝水印到目标文件        
+	        imagecopy($targetImage, $waterImage, $posX, $posY, 0, 0, $waterWidth, $waterHeight);
+	    }elseif ($waterText){
+	    	//文字水印
+	        if (!empty($textColor) && strlen($textColor) == 7){
+	            $R = hexdec(substr($textColor, 1, 2));
+	            $G = hexdec(substr($textColor, 3, 2));
+	            $B = hexdec(substr($textColor, 5));
+	        }else{
+	            die("water text color format error");
+	        }
+	        //imagestring($targetImage, $textFont, $posX, $posY, $waterText, imagecolorallocate($targetImage, $R, $G, $B));
+	        
+	        //
+	        $color = imagecolorallocate($targetImage, $R, $G, $B);
+	        imagettftext($targetImage, $textFont, 0, $posX, $posY, $color, "/usr/share/fonts/zh_CN/TrueType/zysong.ttf", $waterText);
+	    }
+	
+	    //删除源图片文件
+	    if (!$isReserveSourceFile){
+	    	@unlink($sourceFile);
+	    }
+	    
+	    //取得图片的格式
+	    switch($sourceFileInfo[2]){
+	        case 1:
+	        	imagegif ($targetImage, $targetFile);
+	        	break;
+	        case 2:
+	        	imagejpeg($targetImage, $targetFile);
+	        	break;
+	        case 3:
+	        	imagepng($targetImage, $targetFile);
+	        	break;
+	        default:
+	        	die($errorMsg);
+	        	break;
+	    }
+	
+	    //释放内存
+	    if (isset($waterFileInfo)){
+	    	unset($waterFileInfo);
+	    }
+	    if (isset($waterImage)){
+	    	imagedestroy($waterImage);
+	    }
+	    unset($sourceFileInfo);
+	    imagedestroy($sourceImage);
+	    imagedestroy($targetImage);
+	}
+	
+	/**
+	 * 重新计算图片宽高
+	 *
+	 * $sourceFile原文件(大图)；
+	 * $targetWidth,$targetHeight是小图的宽，高。
+	 * 
+	 * @access public
+	 * @param string $sourceFile
+	 * @param int $targetWidth
+	 * @param int $targetHeight
+	 */
+	public function resizeImage($sourceFile, $targetWidth = 0, $targetHeight = 0)
+	{
+		if (!file_exists($sourceFile)){
+			$result = array('width' => $targetWidth, 'height' => $targetHeight);
+			return $result;
+		}
+		$data = getimagesize($sourceFile);
+		$scale  = $data[0] / $data[1];
+		$newscale  = $targetWidth / $targetHeight;
+		
+		if ($data[0] <= $targetWidth && $data[1] <= $targetHeight){
+			$width = $data[0];
+			$height = $data[1];
+		}else{
+			if ($scale <= $newscale ){
+				$width = $targetHeight * $scale ;
+				$height = $targetHeight;
+			}else{
+				$width = $targetWidth;
+				$height = $targetWidth / $scale ;
+			}
+		}
+		
+		$targetWidth = ceil($width);
+		$targetHeight = ceil($height);
+		
+		$result = array('width' => $targetWidth, 'height' => $targetHeight);
+		
+		return $result;
+	}
+}
+?>

@@ -1,0 +1,40 @@
+<?php
+
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+include ROOT . '/biz/User.php';
+include ROOT . '/biz/Photo.php';
+include ROOT . '/biz/Works.php';
+include ROOT . '/biz/PrVisit.php';
+include_once ROOT . "/libs/mail/sendmail.php";
+
+$key = Tools::getValue("key");
+if ($key == md5("canon")) {
+
+    $yesterday = date("Y-m-d", strtotime("-1 day"));
+    $subject = "Pro Photowoo Dashboard " . $yesterday;
+
+    $userdata = User::statisUserYesterday();
+    $usercsdata = User::statisCSUserYesterday();
+    $workdata = Works::statisWorkYesterday();
+    $photodata = Photo::statisPhotoYesterday();
+    $ngphotodata = Photo::statisPhotoYesterday(true);
+    $visitCount = PrVisit::getVisit();
+    $temp = WorkDB::statisYesterdayWorkGoodNum();
+    
+    //liruifeng add 20140429 获取摄影协会注册信息
+    $outInfo = Works::getOutInfo();
+    
+    
+    $bodyHtml = getemailHTML($userdata, $usercsdata,$workdata, $photodata, $ngphotodata, $visitCount,$outInfo);
+    
+    if(Tools::getValue('debug')==1){
+	    echo $bodyHtml;
+	    exit;
+    }
+    sendmail_for_report(ConfBase::$accept_report_mail, $subject, $bodyHtml);
+} else {
+    echo "执行KEY错误！";
+}
+?>
+

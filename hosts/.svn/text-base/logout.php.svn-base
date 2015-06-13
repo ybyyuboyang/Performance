@@ -1,0 +1,7 @@
+<?php
+
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+Admin::loginout();
+Tools::GshowMsg('', "login.php");
+exit;

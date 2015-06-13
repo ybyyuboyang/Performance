@@ -1,0 +1,275 @@
+<?php
+
+include_once ROOT . "/libs/DB.php";
+
+class UserDB {
+
+    private static $user_info = 'user_id,user_name,user_email,user_pwd,is_email_verify,mobile,phone,real_name,school,group_id,reg_from,company,province_id,city_id,district_id,address,postcode,job_id,job_name,cert_type,cert_number,create_at,update_at,is_recevie_goodsinfo,is_email_verify,out_user_id,province_id,city_id';
+
+    //根据条件分页显示
+    public function getUserByWhere($paras) {
+        if (is_array($paras) && !empty($paras)) {
+            $sql = "SELECT SQL_CALC_FOUND_ROWS " . self::$user_info . " from user_info ";
+            $sql.=" where 1 ";
+            $params = array();
+            if ($paras['group_id'] != "") {
+                $sql .=" AND (group_id=:group_id) ";
+                $params['group_id'] = $paras['group_id'];
+            }
+            if ($paras['from'] !== '') {
+                $sql .=" AND (reg_from=:from) ";
+                $params['from'] = $paras['from'];
+            }
+            if ($paras['start'] != '') {
+                $sql .=" AND (create_at >=:start) ";
+                $params["start"] = date("Y-m-d H:i:s", strtotime($paras['start'] . " 00:00:00"));
+            }
+            if ($paras['end'] != '') {
+                $sql .=" AND (create_at <=:end) ";
+                $params["end"] = date("Y-m-d H:i:s", strtotime($paras['end'] . " 23:59:59"));
+            }
+            if ($paras['province'] != '') {
+                $sql .=" AND (province_id=:province) ";
+                $params['province'] = $paras['province'];
+            }
+            if ($paras['city'] !== '') {
+                $sql .=" AND (city_id=:city) ";
+                $params['city'] = $paras['city'];
+            }
+            if (intval($paras['job_id']) > 0) {
+                $sql .=" AND (job_id=:job_id) ";
+                $params['job_id'] = $paras['job_id'];
+            }
+            if ($paras['is_receive'] != '') {
+                $sql .=" AND (is_recevie_goodsinfo=:is_receive) ";
+                $params['is_receive'] = $paras['is_receive'];
+            }
+            if ($paras['is_activate'] != '') {
+                $sql .=" AND (is_email_verify=:is_activate) ";
+                $params['is_activate'] = $paras['is_activate'];
+            }
+
+            if ($paras['stype'] != "" && $paras['keyword'] != "") {
+                $sql.= ' AND ' . $paras['stype'] . ' LIKE \'%' . sprintf('%s', $paras['keyword']) . '%\' ';
+                //$params['keyword'] = $paras['keyword'];
+            }
+
+            $sql.=" ORDER BY user_id desc";
+            if ($paras['act'] != "export") {
+                $offer = ($paras['page'] - 1) * 10;
+                $sql.=" LIMIT $offer ,10";
+            }
+            $dbcfg = Conf::$db['UserDB'];
+            $db = DB::getInstance($dbcfg);
+            $tmp = $db->get_rs($sql, $params);
+            $rs['list'] = $tmp;
+
+            $sql = 'SELECT FOUND_ROWS();';
+            $tmp = $db->get_r($sql);
+            $rs['cnt'] = $tmp['FOUND_ROWS()'];
+            return $rs;
+        }
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisUser($start, $end) {
+        $sql = "SELECT  group_id ,count(*) as count FROM user_info  ";
+        $sql.=" where 1 ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" group by group_id ";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisPrUser($start, $end) {
+        $sql = "SELECT  count(*) as count FROM user_info  ";
+        $sql.=" where is_reg_pr=1 ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisUser2($start, $end) {
+        $sql = "SELECT  DATE_FORMAT(create_at,'%Y%m%d') as sdate,group_id ,count(*) as count FROM user_info  ";
+        $sql.=" where 1 ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" group by sdate,group_id order by sdate desc";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisPrUser2($start, $end) {
+        $sql = "SELECT  DATE_FORMAT(create_at,'%Y%m%d') as sdate,count(*) as count FROM user_info  ";
+        $sql.=" where is_reg_pr=1 ";
+        $params = array();
+        if ($start != '') {
+            $sql .=" AND (create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" group by sdate order by sdate desc";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisUserYesterday() {
+        $params = array();
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+        $sql = "SELECT group_id ,count(user_id) as count FROM user_info  ";
+        $sql.=" where 1 ";
+        $sql .=" AND (create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $sql.=" group by group_id ";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据各组的参赛用户数量
+    public function statisCSUserYesterday() {
+        $params = array();
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+        $sql = "SELECT COUNT(DISTINCT(user_id))as count,group_id ,theme_id FROM works  ";
+        $sql.=" where 1 AND work_status!=500 AND is_delete=0 AND user_id>0 AND group_id>0";
+        $sql .=" AND (create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $sql.=" group by group_id,theme_id ";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的用户数量
+    public function statisPrUserYesterday() {
+        $params = array();
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+        $sql = "SELECT  count(*) as count FROM user_info  ";
+        $sql.=" where is_reg_pr=1 ";
+        $sql .=" AND (create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    //根据时间统计来自协会的用户数量
+    public function statisXHUserYesterday() {
+        $params = array();
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+        $sql = "SELECT  count(*) as count FROM user_info  ";
+        $sql.=" where out_user_id!='' ";
+        $sql .=" AND (create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    public static function modi_user_info($user_id, $post) {
+
+        $sql = 'UPDATE user_info SET phone=:phone,mobile=:mobile,province_id=:province_id,city_id=:city_id,address=:address,postcode=:postcode,company=:company,cert_type=:cert_type,cert_number=:cert_number,job_id=:job_id,user_email=:user_email,real_name=:real_name,school=:school,update_at=NOW() WHERE user_id=:user_id';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'phone' => $post['phone'],
+            'mobile' => $post['mobile'],
+            'province_id' => $post['province_id'],
+            'city_id' => $post['city_id'],
+            'address' => $post['address'],
+            'postcode' => $post['postcode'],
+            'company' => $post['company'],
+            'cert_type' => $post['cert_type'],
+            'cert_number' => $post['cert_number'],
+            'job_id' => $post['job_id'],
+            'user_email' => $post['user_email'],
+            'real_name' => $post['real_name'],
+            'school' => $post['school'],
+            'user_id' => $user_id,
+        );
+        $rs = DB::getInstance($dbcfg)->affect_num($sql, $params);
+        return $rs;
+    }
+
+    public static function check_exist_by_email($user_id, $email) {
+        $sql = 'SELECT count(user_id) as count FROM user_info WHERE  user_id!=:user_id and user_email=:user_email';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('user_email' => $email, 'user_id' => $user_id);
+        $rs = DB::getInstance($dbcfg)->get_r($sql, $params);
+        return $rs;
+    }
+
+    public static function check_exist_by_mobile($user_id, $mobile) {
+        $sql = 'SELECT count(user_id) as count FROM user_info WHERE  user_id!=:user_id and mobile=:mobile';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('mobile' => $mobile, 'user_id' => $user_id);
+        $rs = DB::getInstance($dbcfg)->get_r($sql, $params);
+        return $rs;
+    }
+
+    public static function check_exist_by_certnumber($user_id, $cert_number) {
+        $sql = 'SELECT count(user_id) as count FROM user_info WHERE  user_id!=:user_id and cert_number=:cert_number';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('cert_number' => $cert_number, 'user_id' => $user_id);
+        $rs = DB::getInstance($dbcfg)->get_r($sql, $params);
+        return $rs;
+    }
+
+    public static function get_user_info_by_userid($uid) {
+        $sql = 'SELECT ' . self::$user_info . ' FROM user_info WHERE user_id=:user_id';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('user_id' => $uid);
+        $rs = DB::getInstance($dbcfg)->get_r($sql, $params);
+        return $rs;
+    }
+
+}

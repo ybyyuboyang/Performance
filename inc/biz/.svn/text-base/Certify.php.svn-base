@@ -1,0 +1,33 @@
+<?php
+
+include_once ROOT . '/dat/CertifyDB.php';
+
+class Certify {
+
+    public static function addCertify($pictures) {
+        $result = CertifyDB::add_certify($pictures);
+        return $result;
+    }
+
+    public static function delete_certify_by_id($did) {
+        return CertifyDB::delete_certify_by_id($did);
+    }
+
+    public static function update_certify_by_id($did, $memo1, $memo2) {
+        return CertifyDB::update_certify_by_id($did, $memo1, $memo2);
+    }
+
+    public static function get_certify_by_uid($uid) {
+        $ret = array();
+        if ($uid > 0) {
+            $temp = CertifyDB::get_certify_by_uid($uid);
+            if (count($temp) > 0) {
+                foreach ($temp as $v) {
+                    $ret[$v["type"]][] = $v;
+                }
+            }
+        }
+        return $ret;
+    }
+
+}

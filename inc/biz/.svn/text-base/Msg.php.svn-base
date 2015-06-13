@@ -1,0 +1,14 @@
+<?php
+
+include_once ROOT . '/dat/MsgDB.php';
+
+class Msg {
+
+    public static function add_msg($paras) {
+
+        $result = MsgDB::add_msg($paras);
+        return $result;
+    }
+
+}
+

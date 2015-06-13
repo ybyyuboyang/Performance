@@ -1,0 +1,45 @@
+<?php
+
+include_once ROOT . '/dat/WorkindexDB.php';
+
+class Workindex {
+
+    public static function post_work_index($paras) {
+        $work_id = $paras["work_id"];
+        if ($work_id > 0) {
+            self::delete_workindex_by_wid($work_id);
+            $paras["status"] = 1;
+            if ($paras["IndexCommendID"] > 0) {
+                $paras["page_type"] = 1;
+                $paras["postion"] = $paras["IndexCommendID"];
+                $result = WorkindexDB::add_work_index($paras);
+            }
+            if ($paras["IsDetailCommend"] == 1 && $paras["DetailCommendID"] > 0) {
+                $paras["page_type"] = 2;
+                $paras["postion"] = $paras["DetailCommendID"];
+                $result = WorkindexDB::add_work_index($paras);
+            }
+        }
+        return $result;
+    }
+
+    public static function getLocationByWid($work_id) {
+
+        $result = WorkindexDB::getLocationByWid($work_id);
+        $ret = array();
+        if (!empty($result)) {
+            foreach ($result as $v) {
+                $ret[$v["page_type"]] = $v["postion"];
+            }
+        }
+        return $ret;
+    }
+
+    private static function delete_workindex_by_wid($work_id) {
+
+        $result = WorkindexDB::delete_workindex_by_wid($work_id);
+        return $result;
+    }
+
+}
+

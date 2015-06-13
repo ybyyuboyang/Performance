@@ -1,0 +1,64 @@
+<?php
+
+include_once ROOT . "/libs/DB.php";
+
+class WorkindexDB {
+
+    public static function add_work_index($form_data) {
+
+        self::update_work_index($form_data);
+        $sql = 'INSERT INTO works_index(work_id, page_type,group_id,theme_id,postion,status,create_at,update_at)  VALUES(:work_id, :page_type,:group_id,:theme_id,:postion,:status,NOW(), NOW())';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'work_id' => $form_data['work_id'],
+            'page_type' => $form_data['page_type'],
+            'group_id' => $form_data['group_id'],
+            'theme_id' => $form_data['theme_id'],
+            'postion' => $form_data['postion'],
+            'status' => $form_data['status'],
+        );
+        $db = DB::getInstance($dbcfg);
+        $db->affect_num($sql, $params);
+        $last_insert_id = $db->last_insert_id();
+        return $last_insert_id;
+    }
+
+    private static function update_work_index($form_data) {
+
+        $sql = 'UPDATE works_index SET status=2,update_at=NOW() WHERE page_type=:page_type AND postion=:postion and group_id=:group_id and theme_id=:theme_id';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'page_type' => $form_data['page_type'],
+            'group_id' => intval($form_data['group_id']),
+            'theme_id' => intval($form_data['theme_id']),
+            'postion' => $form_data['postion']
+        );
+        $db = DB::getInstance($dbcfg);
+        $tmp = $db->affect_num($sql, $params);
+        return $tmp;
+    }
+
+    /* 根据WorkID获取位置信息 */
+
+    public static function getLocationByWid($work_id) {
+        $sql = "SELECT id,page_type,work_id,postion,status from works_index ";
+        $sql.=" where work_id=:work_id and status=1 ";
+        $params['work_id'] = $work_id;
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    public static function delete_workindex_by_wid($work_id) {
+        $sql = 'UPDATE works_index SET status=2,update_at=NOW() WHERE work_id=:work_id AND status=1';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'work_id' => $work_id,
+        );
+        $db = DB::getInstance($dbcfg);
+        $tmp = $db->affect_num($sql, $params);
+        return $tmp;
+    }
+
+}

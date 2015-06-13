@@ -1,0 +1,143 @@
+<?php
+
+include_once ROOT . '/dat/UserDB.php';
+include_once ROOT . '/dat/PhotoDB.php';
+
+class User {
+
+    public static function get_user_list($paras) {
+
+        $userInfo = UserDB::getUserByWhere($paras);
+        return $userInfo;
+    }
+
+    public static function get_user_by_user_id($uid) {
+        $ret = array();
+        if ($uid > 0)
+            $ret = UserDB::get_user_info_by_userid($uid);
+        return $ret;
+    }
+
+    public static function modi_user_info($post) {
+
+        $user_id = trim($post['user_id']);
+        $mobile = trim($post['mobiel']);
+        $user_email = trim($post['user_email']);
+        if ($user_id) {
+            if ($user_email != "") {
+                $userinfo = UserDB::check_exist_by_email($user_id, $user_email);
+                if ($userinfo && $userinfo['count'] > 0) {
+                    return -1;
+                }
+            }
+            if ($mobile != "") {
+                $userinfo = UserDB::check_exist_by_mobile($user_id, $mobile);
+                if ($userinfo && $userinfo['count'] > 0) {
+                    return -2;
+                }
+            }
+
+            return UserDB::modi_user_info($user_id, $post);
+        }
+    }
+
+    public static function get_photos_by_useid($users) {
+        $ret = array();
+        if (count($users) > 0) {
+            foreach ($users as $k => $v) {
+                $photos = PhotoDB::get_works_by_userid($user_id);
+                $ret[$v["user_id"]] = $photos;
+            }
+        }
+        return $ret;
+    }
+
+    public static function get_works_by_userid($users) {
+        $ret = array();
+        if (count($users) > 0) {
+            foreach ($users as $k => $v) {
+                $photos = PhotoDB::get_works_by_userid($v["user_id"]);
+                $ret[$v["user_id"]] = $photos;
+            }
+        }
+        return $ret;
+    }
+
+    public static function statisUser($start, $end) {
+
+        $userInfo = UserDB::statisUser($start, $end);
+        $pruser = UserDB::statisPrUser($start, $end);
+        $retuserInfo = self::statisFun($userInfo);
+        $retuserInfo["prcount"] = $pruser["count"];
+        return $retuserInfo;
+    }
+
+    public static function statisUser2($start, $end) {
+
+        $ret = array();
+        $userInfo = UserDB::statisUser2($start, $end);
+        if (!empty($userInfo)) {
+            foreach ($userInfo as $k => $v) {
+                $ret[$v['sdate']][$v['group_id']] = $v['count'];
+            }
+        }
+        $pruser = UserDB::statisPrUser2($start, $end);
+        if (!empty($pruser)) {
+            foreach ($pruser as $k => $v) {
+                $ret[$v["sdate"]]["prcount"] = $v["count"];
+            }
+        }
+        return $ret;
+    }
+
+    public static function statisUserYesterday() {
+
+        $userInfo = UserDB::statisUserYesterday();
+        $retuserInfo = self::statisFun($userInfo);
+        $pruser = UserDB::statisPrUserYesterday($start, $end);
+        $xhruser = UserDB::statisXHUserYesterday($start, $end);
+        $retuserInfo["prcount"] = $pruser["count"];
+        $retuserInfo["xhcount"] = $xhruser["count"];
+        return $retuserInfo;
+    }
+
+    public static function statisCSUserYesterday() {
+
+        $userInfo = UserDB::statisCSUserYesterday();
+        $retuserInfo = self::statisFun2($userInfo);
+        return $retuserInfo;
+    }
+
+    private static function statisFun($userInfo) {
+        $ret = array();
+        if (!empty($userInfo)) {
+            $total = 0;
+            foreach ($userInfo as $k => $v) {
+                $total+=$v['count'];
+                $ret[$v['group_id']] = $v['count'];
+            }
+        }
+        $ret['total'] = $total;
+        return $ret;
+    }
+
+    private static function statisFun2($workInfo) {
+        $ret = array();
+        if (!empty($workInfo)) {
+            $total = 0;
+            foreach ($workInfo as $k => $v) {
+                $total+=$v['count'];
+                if ($v['group_id'] == 10000 || $v['group_id'] == 50000) {
+                    $ret[$v['theme_id']] = $v['count'];
+                    $ret[$v['group_id']]+=$v['count'];
+                } else {
+                    $ret[$v['group_id']]+= $v['count'];
+                }
+            }
+        }
+        $ret['total'] = $total;
+        return $ret;
+    }
+
+}
+

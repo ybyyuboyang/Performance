@@ -1,0 +1,12 @@
+.info{text-align: center;margin: 70px auto 50px;}
+.info h1{font-size: 60px;color: #434A53;}
+.info h2{font-size: 16px;color: #A59B9B;margin-top: 44px;}
+.content,.content_s{width: 960px;background: #fff;margin:0 auto;border:1px solid #DFDFDF;border-radius: 4px;-webkit-border-radius: 4px;-moz-border-radius: 4px;-ms-border-radius: 4px;}
+.content h2,.content_s h2{font-size: 16px;padding:16px 0 16px 20px;border-bottom: 1px solid #DFDFDF;}
+.partform_table{width: 100%;;font-size: 14px;text-align: left;margin-top: 16px;}
+.partform_table thead th{padding-left: 20px;}
+.partform_table tr td{padding: 28px 10px 28px 20px;border-bottom: 1px solid #DFDFDF;line-height: 30px;vertical-align: middle;}
+.partform_table tr:last-child{border-bottom: none;}
+.partform_table h4{font-size: 36px;}
+.content{margin-bottom:60px ;}
+.content_s{margin: 0px auto 120px auto;}

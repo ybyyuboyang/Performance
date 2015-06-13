@@ -1,0 +1,42 @@
+<?php
+
+include_once ROOT . "/libs/DB.php";
+
+class PrVisitDB {
+
+    public function statisVisit($start, $end) {
+
+        $sql = "SELECT count(id) as count FROM  `user_pr_visit`";
+        $sql.=" where 1 ";
+        $params = array();
+
+        $sql .=" AND (create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        $sql .=" AND (create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    public function statisVisit2($start, $end) {
+
+        $sql = "SELECT  DATE_FORMAT(create_at,'%Y%m%d') as sdate,count(id) as count FROM  `user_pr_visit`";
+        $sql.=" where 1 ";
+        
+        $params = array();
+
+        $sql .=" AND (create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        $sql .=" AND (create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        $sql.=" GROUP BY sdate ";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+}

@@ -1,0 +1,3 @@
+<div class="footer">佳能(中国)有限公司版权所有，未经许可不得转载&nbsp;&nbsp;京ICP备05038060号</div>
+</body>
+</html>

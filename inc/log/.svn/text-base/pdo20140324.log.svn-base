@@ -1,0 +1,19 @@
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[1130][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [1130] Host '218.241.141.234' is not allowed to connect to this MySQL serverpdo
+[1130][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [1130] Host '218.241.141.234' is not allowed to connect to this MySQL serverpdo
+[1130][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [1130] Host '218.241.141.234' is not allowed to connect to this MySQL serverpdo
+[1130][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [1130] Host '218.241.141.234' is not allowed to connect to this MySQL serverpdo
+[1130][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [1130] Host '218.241.141.234' is not allowed to connect to this MySQL serverpdo
+[1130][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [1130] Host '218.241.141.234' is not allowed to connect to this MySQL serverpdo
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[2002][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: 不知道这样的主机。 pdo
+[1045][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[28000] [1045] Access denied for user 'canon2014'@'218.241.141.234' (using password: YES)pdo
+[1045][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[28000] [1045] Access denied for user 'canon2014'@'218.241.141.234' (using password: YES)pdo
+[1045][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[28000] [1045] Access denied for user 'canon2014'@'218.241.141.234' (using password: YES)pdo
+[1045][__LINE__:68]DB CONNECTION FAILED:SQLSTATE[28000] [1045] Access denied for user 'canon2014'@'218.241.141.234' (using password: YES)pdo

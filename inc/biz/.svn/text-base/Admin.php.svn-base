@@ -1,0 +1,60 @@
+<?php
+
+error_reporting(0);
+include_once ROOT . '/libs/Tools.php';
+
+//session_set_cookie_params(24 * 3600);
+
+session_start();
+
+class Admin {
+
+    private static $account = array('admin1' => 'Kif9ZWz5UT', 'admin2' => 'nRaVI1Txw2', 'admin3' => '3fGyKeqD1Q', 'admin4' => '8YaGdTUio3');
+    //private static $account = array('admin1' => 'admin', 'admin2' => 'admin', 'admin3' => 'admin');
+    public static $is_export = false;
+
+    public static function admin_login($loginname, $loginpwd) {
+        if (array_key_exists($loginname, self::$account)) {
+            if (self::$account[$loginname] == $loginpwd) {
+                $rs = array('errorCode' => 0);
+                $_SESSION["login_account"] = $loginname;
+                //setcookie('PHPSESSID', session_id(), time() + 365 * 24 * 3600);
+                echo json_encode($rs);
+                exit;
+            } else {//密码不正确
+                $rs['errorCode'] = 2;
+                echo json_encode($rs);
+                exit;
+            }
+        } else {//用户名不存在
+            $rs['errorCode'] = 1;
+            echo json_encode($rs);
+            exit;
+        }
+    }
+
+    public static function loginout() {
+        unset($_SESSION["login_account"]);
+    }
+
+    public static function check_login_status() {
+        $account = array_keys(self::$account);
+        $login_account = $_SESSION["login_account"];
+        if ($login_account && in_array($login_account, $account)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public static function check_export() {
+        $account = array_keys(self::$account);
+        $login_account = $_SESSION["login_account"];
+        if ($login_account == "admin3") {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+}

@@ -1,0 +1,461 @@
+<?php
+
+include_once ROOT . "/libs/DB.php";
+
+class PhotoDB {
+
+    //根据条件分页显示
+    public function getPhotoByWhere($paras) {
+        if (is_array($paras) && !empty($paras)) {
+            $filed1 = "p.photo_id,p.photo_name,p.short_path,p.photo_status,p.ng_reason,p.equipment,p.is_delete";
+            $filed2 = "w.work_id,w.work_name,w.group_id,w.theme_id,w.work_type ";
+            $filed3 = "u.user_id,u.user_name,u.user_email,u.real_name ";
+            $sql = "SELECT SQL_CALC_FOUND_ROWS $filed1 ,$filed2,$filed3 from works_photo as p left join works as w on p.work_id=w.work_id left join user_info as u on u.user_id=w.user_id";
+            $sql.=" where 1 and w.work_id>0 AND p.photo_status!=500 AND w.work_status!=500 AND p.is_delete=0 AND w.is_delete=0";
+            $params = array();
+            if ($paras['status'] > -1) {
+                $sql .=" AND (p.photo_status=:status)";
+                $params['status'] = $paras['status'];
+            }
+
+            if ($paras['ng_reason'] != "") {
+                $sql .=" AND (p.ng_reason=:ng_reason)";
+                $params['ng_reason'] = $paras['ng_reason'];
+            }
+            if ($paras['group_id'] > 0) {
+                $sql .=" AND (w.group_id=:group_id) ";
+                $params['group_id'] = $paras['group_id'];
+                if ($paras['theme_id'] > 0) {
+                    $sql .=" AND (w.theme_id=:theme_id) ";
+                    $params['theme_id'] = $paras['theme_id'];
+                }
+            }
+
+            if ($paras['from'] !== '') {
+                $sql .=" AND (u.reg_from=:from) ";
+                $params['from'] = $paras['from'];
+            }
+            if ($paras['start'] != '') {
+                $sql .=" AND (w.modify_at >=:start) ";
+                $params['start'] = $paras['start'];
+                $params["end"] = date("Y-m-d H:i:s", strtotime($paras['start'] . " 00:00:00"));
+            }
+            if ($paras['end'] != '') {
+                $sql .=" AND (w.modify_at <=:end) ";
+                $params["end"] = date("Y-m-d H:i:s", strtotime($paras['end'] . " 23:59:59"));
+            }
+            if (intval($paras['business']) > 0) {
+                $sql .=" AND (w.is_can_biz=:business) ";
+                $params['business'] = $paras['business'];
+            }
+            if ($paras['stype'] != "" && $paras['keyword'] != "") {
+                switch ($paras['stype']) {
+                    case "WorksName":
+                        $sql.= ' AND w.work_name LIKE \'%' . sprintf('%s', $paras['keyword']) . '%\' ';
+                        break;
+                    case "WorksID":
+                        $sql .=" AND (w.work_id=:keyword) ";
+                        break;
+                    case "LoginName":
+                        $sql.= ' AND u.user_name LIKE \'%' . sprintf('%s', $paras['keyword']) . '%\' ';
+                        break;
+                    case "RealName":
+                        $sql.= ' AND u.real_name LIKE \'%' . sprintf('%s', $paras['keyword']) . '%\' ';
+                        break;
+                    case "Email":
+                        $sql .=" AND (u.user_email=:keyword) ";
+                        break;
+                }
+                $params['keyword'] = $paras['keyword'];
+            }
+            $offer = ($paras['page'] - 1) * 12;
+            $sql.=" ORDER BY p.update_at  LIMIT $offer ,12";
+            $dbcfg = Conf::$db['UserDB'];
+            $db = DB::getInstance($dbcfg);
+            $tmp = $db->get_rs($sql, $params);
+            $rs['list'] = $tmp;
+
+            $sql = 'SELECT FOUND_ROWS();';
+            $tmp = $db->get_r($sql);
+            $rs['cnt'] = $tmp['FOUND_ROWS()'];
+            return $rs;
+        }
+    }
+
+    //根据时间条件获取所有NG照片
+    public function getNGPhotoByWhere($input) {
+        if (is_array($input) && !empty($input)) {
+            $sql = "SELECT DATE_FORMAT(create_at,'%Y%m%d') as sdate,ng_reason ,count(photo_id) as count from works_photo where photo_status=300 and is_delete=0 ";
+            $params = array();
+            if ($input['start'] != '') {
+                $sql .=" AND (create_at >=:start) ";
+                $params["start"] = date("Y-m-d H:i:s", strtotime($input['start'] . " 00:00:00"));
+            }
+            if ($input['end'] != '') {
+                $sql .=" AND (create_at <=:end) ";
+                $params["end"] = date("Y-m-d H:i:s", strtotime($input['end'] . " 23:59:59"));
+            }
+            $sql .=" GROUP BY sdate,ng_reason ";
+            $dbcfg = Conf::$db['UserDB'];
+            $db = DB::getInstance($dbcfg);
+            $rs = $db->get_rs($sql, $params);
+            return $rs;
+        }
+    }
+
+    public static function update_photo_status($photo_id, $photo_status, $ng_reason) {
+        $sql = 'UPDATE works_photo SET photo_status = :photo_status, ng_reason = :ng_reason, update_at = NOW() WHERE photo_id = :photo_id';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'photo_status' => $photo_status,
+            'ng_reason' => $ng_reason,
+            'photo_id' => $photo_id,
+        );
+        $rs = DB::getInstance($dbcfg)->affect_num($sql, $params);
+        return $rs;
+    }
+
+    public static function update_work_photo_status_byids($pids, $status) {
+        $sql = 'UPDATE works_photo SET photo_status = :status, update_at = NOW() WHERE photo_id IN(' . implode(",", $pids) . ')';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('status' => $status);
+        $rs = DB::getInstance($dbcfg)->affect_num($sql, $params);
+        return $rs;
+    }
+
+    private static function is_all_approved_by_pid($pid) {
+        $fileds = "photo_id,work_id,photo_status ";
+        $sql = "SELECT $fileds FROM `works_photo` where is_delete=0 and work_id =(select work_id from works_photo where photo_id=:pid)";
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('pid' => $pid);
+        $rs = DB:: getInstance($dbcfg)->get_rs($sql, $params);
+        $ret = array("is_all" => 1, 'work_id' => 0);
+        foreach ($rs as $v) {
+            $ret["work_id"] = $v['work_id'];
+            if ($v['photo_status'] != 100) {
+                $ret["is_all"] = 0;
+                break;
+            }
+        }
+        return $ret;
+    }
+
+    /* 通过作品 */
+
+    public static function update_work($pid) {
+        $info = self::is_all_approved_by_pid($pid);
+        if ($info["is_all"] && $info["work_id"] > 0) {
+            self::update_work_status($info["work_id"], 100);
+        }
+    }
+
+    /* 更新作品状态 */
+
+    public static function update_work_status($work_id, $status) {
+        $sql = 'UPDATE works SET work_status = :status, update_at = NOW() WHERE work_id = :work_id';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'status' => $status,
+            'work_id' => $work_id,
+        );
+        $rs = DB::getInstance($dbcfg)->affect_num($sql, $params);
+        return $rs;
+    }
+
+    /* 该作品下所有作品是否通过 */
+
+    private static function is_all_approved($work_id) {
+        $sql = 'SELECT photo_id, work_id, photo_status FROM `works_photo` where work_id = :work_id ';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('work_id' => $work_id);
+        $rs = DB:: getInstance($dbcfg)->get_rs($sql, $params);
+        $is_all = true;
+        foreach ($rs as $v) {
+            if ($v['photo_status'] != 100) {
+                $is_all = false;
+                break;
+            }
+        }
+        return $is_all;
+    }
+
+    /* 根据Work_ID获取照片列表 */
+
+    public static function getPhotoByWorkid($work_id) {
+
+        $sql = "SELECT photo_id,work_id,is_cover,photo_name,photo_desc,big_path,tiny_path from works_photo";
+        $sql.=" where work_id=:work_id AND is_delete=0 AND photo_status!=500 order by create_at desc";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('work_id' => $work_id);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    public static function get_photos_by_userid($user_id) { 
+
+        $filed1 = "w.user_id ";
+        $filed2 = "p.photo_id,p.work_id,p.tiny_path,p.big_path";
+        $sql = "SELECT $filed1,$filed2 from works_photo as p left join works as w on p.work_id=w.work_id";
+        $sql.=" where w.user_id=:user_id AND p.is_delete=0";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('user_id' => $user_id);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    public static function get_works_by_userid($user_id) {
+
+        $filed1 = "w.user_id ";
+        $filed2 = "p.photo_id,p.work_id,p.tiny_path,p.big_path";
+        $sql = "SELECT $filed1,$filed2 from works_photo as p left join works as w on p.work_id=w.work_id";
+        $sql.=" where p.is_cover=1 and w.user_id=:user_id AND w.is_delete=0 and w.work_status!=500 AND p.tiny_path!=''";
+        $sql.=" ORDER BY p.create_at desc LIMIT 0 ,20";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('user_id' => $user_id);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    public static function get_photos_by_ids($pids) {
+
+        $filed1 = "w.user_id,w.work_id,w.work_name";
+        $filed2 = "p.photo_id,p.photo_status,p.ng_reason,p.sort_num,p.create_at";
+        $sql = "SELECT $filed1,$filed2 from works_photo as p left join works as w on p.work_id=w.work_id";
+        $sql.=' where p.photo_id IN(' . implode(",", $pids) . ')';
+
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql);
+        return $rs;
+    }
+
+    public static function get_photo_by_id($photo_id) {
+        $sql = "SELECT photo_id,photo_name,photo_status,ng_reason,work_id from works_photo where photo_id=:photo_id ";
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('photo_id' => $photo_id);
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    public static function get_tags_info_by_workid($work_id) {
+        $sql = 'SELECT ' . self::$works_tags . ' FROM works_tags WHERE work_id = :work_id AND is_delete = 0 ';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array('work_id' => $work_id);
+        $db = DB::getInstance($dbcfg);
+        $tmp = $db->get_rs($sql, $params);
+        return $tmp;
+    }
+
+    //根据时间分类统计各组的照片数量
+    public function statisPhoto($start, $end, $ng_status = false) {
+        $sql = "SELECT  w.group_id ,w.theme_id,count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id   ";
+        $sql.=" where 1 ";
+        $params = array();
+        if ($ng_status)
+            $sql .=" AND (p.photo_status=300) ";
+        if ($start != '') {
+            $sql .=" AND (p.create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (p.create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" GROUP BY w.group_id ,w.theme_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的照片数量
+    public function statisPhoto2($start, $end, $ng_status = false) {
+        $sql = "SELECT  DATE_FORMAT(p.create_at,'%Y%m%d') as sdate, w.group_id ,w.theme_id,count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id   ";
+        $sql.=" where 1 and p.is_delete=0 ";
+        $params = array();
+        if ($ng_status)
+            $sql .=" AND (p.photo_status=300) ";
+        if ($start != '') {
+            $sql .=" AND (p.create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (p.create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" GROUP BY sdate,w.group_id ,w.theme_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的照片数量
+    public function statisNgPhoto($start, $end) {
+        $sql = "SELECT  w.group_id ,w.theme_id,count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id   ";
+        $sql.=" where (p.photo_status=300)";
+        $params = array();
+
+        if ($start != '') {
+            $sql .=" AND (p.update_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (p.update_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" GROUP BY w.group_id ,w.theme_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //根据时间分类统计各组的照片数量
+    public function statisNgPhoto2($start, $end) {
+        $sql = "SELECT  DATE_FORMAT(p.create_at,'%Y%m%d') as sdate, w.group_id ,w.theme_id,count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id   ";
+        $sql.=" where (p.photo_status=300) AND p.is_delete=0";
+        $params = array();
+
+        if ($start != '') {
+            $sql .=" AND (p.create_at >=:cstart) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (p.create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+
+        $sql.=" GROUP BY sdate,w.group_id ,w.theme_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    public function statisPrPhoto($start, $end, $ng_status = false) {
+        $sql = "SELECT count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id left join user_info as u on w.user_id=u.user_id   ";
+        $sql.=" where u.is_reg_pr=1 ";
+        $params = array();
+        if ($ng_status)
+            $sql .=" AND (p.photo_status=300) ";
+        if ($start != '') {
+            $sql .=" AND (p.create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (p.create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    public function statisPrPhoto2($start, $end, $ng_status = false) {
+        $sql = "SELECT DATE_FORMAT(p.create_at,'%Y%m%d') as sdate,count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id left join user_info as u on w.user_id=u.user_id   ";
+        $sql.=" where u.is_reg_pr=1 ";
+        $params = array();
+        if ($ng_status)
+            $sql .=" AND (p.photo_status=300) ";
+        if ($start != '') {
+            $sql .=" AND (p.create_at >=:start) ";
+            $params["start"] = date("Y-m-d H:i:s", strtotime($start . " 00:00:00"));
+        }
+        if ($end != '') {
+            $sql .=" AND (p.create_at <=:end) ";
+            $params["end"] = date("Y-m-d H:i:s", strtotime($end . " 23:59:59"));
+        }
+        $sql.=" GROUP BY sdate";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //统计前一天的照片
+    public function statisPhotoYesterday($ng_status = false) {
+        $params = array();
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+        $sql = "SELECT  w.group_id ,w.theme_id,count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id   ";
+        $sql.=" where 1 and p.is_delete=0";
+        $params = array();
+        if ($ng_status)
+            $sql .=" AND (p.photo_status=300) ";
+        $sql .=" AND (p.create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (p.create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $sql.=" GROUP BY w.group_id ,w.theme_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+    //统计前一天的照片
+    /*
+      public function statisNGPhotoForMail() {
+      $params = array();
+      $yesterday = date("Y-m-d", strtotime("-1 day"));
+      $today = date("Y-m-d", time());
+      //$params["ustart"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+      //$params["uend"] = date("Y-m-d H:i:s", strtotime($today . " 13:00:00"));
+      $params["cstart"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+      $params["cend"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+
+      $sql = "SELECT  w.group_id ,w.theme_id,count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id   ";
+      $sql.=" where 1 and p.is_delete=0";
+      $sql .=" AND (p.photo_status=300) ";
+      //$sql .=" AND (p.update_at >=:ustart) ";
+      //$sql .=" AND (p.update_at <=:uend) ";
+      $sql .=" AND (p.create_at >=:cstart) ";
+      $sql .=" AND (p.create_at <=:cend) ";
+      $sql.=" GROUP BY w.group_id ,w.theme_id";
+      $dbcfg = Conf::$db['UserDB'];
+      $db = DB::getInstance($dbcfg);
+      $rs = $db->get_rs($sql, $params);
+      return $rs;
+      }
+     */
+    //统计前一天的来自PR照片总数
+    public function statisPrPhotoYesterday($ng_status = false) {
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+        $sql = "SELECT count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id left join user_info as u on w.user_id=u.user_id   ";
+        $sql.=" where u.is_reg_pr=1 ";
+        $params = array();
+        if ($ng_status)
+            $sql .=" AND (p.photo_status=300) ";
+        $sql .=" AND (p.create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (p.create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+    public function statisXHPhotoYesterday($ng_status = false) {
+        $yesterday = date("Y-m-d", strtotime("-1 day"));
+        $sql = "SELECT count(p.photo_id) as count FROM works_photo as p left join works as w on w.work_id=p.work_id left join user_info as u on w.user_id=u.user_id   ";
+        $sql.=" where u.out_user_id!='' ";
+        $params = array();
+        if ($ng_status)
+            $sql .=" AND (p.photo_status=300) ";
+        $sql .=" AND (p.create_at >=:start) ";
+        $params["start"] = date("Y-m-d H:i:s", strtotime($yesterday . " 00:00:00"));
+        $sql .=" AND (p.create_at <=:end) ";
+        $params["end"] = date("Y-m-d H:i:s", strtotime($yesterday . " 23:59:59"));
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $rs = $db->get_r($sql, $params);
+        return $rs;
+    }
+
+}

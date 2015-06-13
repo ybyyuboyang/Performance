@@ -1,0 +1,53 @@
+<?php
+
+include_once ROOT . "/libs/DB.php";
+
+class CertifyDB {
+
+    public static function add_certify($form_data) {
+        $sql = 'INSERT INTO user_award_certify(user_id, type,source_path,thumb_path,create_at,update_at)  VALUES(:user_id,:type, :source_path, :thumb_path,NOW(), NOW())';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'user_id' => $form_data['user_id'],
+            'type' => $form_data['type'],
+            'source_path' => $form_data['source_path'],
+            'thumb_path' => $form_data['thumb_path']
+        );
+        $db = DB::getInstance($dbcfg);
+        $db->affect_num($sql, $params);
+        $last_insert_id = $db->last_insert_id();
+        return $last_insert_id;
+    }
+
+    public static function delete_certify_by_id($did) {
+        $sql = 'UPDATE user_award_certify SET status = 0,update_at = NOW() WHERE id = :did';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'did' => $did,
+        );
+        $rs = DB::getInstance($dbcfg)->affect_num($sql, $params);
+        return $rs;
+    }
+
+    public static function update_certify_by_id($did, $memo1, $memo2) {
+        $sql = 'UPDATE user_award_certify SET memo1 = :memo1,memo2 = :memo2,update_at = NOW() WHERE id = :did';
+        $dbcfg = Conf::$db['UserDB'];
+        $params = array(
+            'did' => $did,
+            'memo1' => $memo1,
+            'memo2' => $memo2
+        );
+        $rs = DB::getInstance($dbcfg)->affect_num($sql, $params);
+        return $rs;
+    }
+
+    public static function get_certify_by_uid($uid) {
+        $sql = "select * from user_award_certify where status>0 and user_id=:user_id";
+        $dbcfg = Conf::$db['UserDB'];
+        $db = DB::getInstance($dbcfg);
+        $params = array('user_id' => $uid);
+        $rs = $db->get_rs($sql, $params);
+        return $rs;
+    }
+
+}

@@ -1,0 +1,142 @@
+<?php
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+include ROOT . '/biz/Photo.php';
+if (!Admin::check_login_status()) {
+    Tools::GshowMsg('', "login.php");
+    exit;
+}
+$title = '问题照片统计';
+$menu = 'reject_photo_statis';
+
+$act = Tools::getValue("act", "");
+$paras = array();
+$start = Tools::getValue("start", "");
+$end = Tools::getValue("end", "");
+$paras["start"] = $start;
+$paras["end"] = $end;
+$photos = Photo::get_ngphotos_list($paras);
+$result = array();
+if (count($photos)) {
+    foreach ($photos as $k => $v) {
+        $result[$v['sdate']][$v['ng_reason']] = $v['count'];
+    }
+}
+
+if ($act == "export" && !empty($result)) {
+
+    /** Include PHPExcel */
+    require_once ROOT . '/libs/PHPExcel.php';
+    require_once ROOT . '/libs/PHPExcel/Writer/Excel5.php';     // 用于其他低版本xls 
+    require_once ROOT . '/libs/PHPExcel/Writer/Excel2007.php'; // 用于 excel-2007 格式 
+    require_once ROOT . '/libs/PHPExcel/IOFactory.php';
+    if (!empty($result) && count($result) > 0) {
+
+        $objPHPExcel = new PHPExcel();
+        /* excel列标题,根据你要导出的excel设置 */
+
+        $objPHPExcel->getActiveSheet()->setCellValue('a1', "日期"); //设置列的值
+        $objPHPExcel->getActiveSheet()->setCellValue('b1', "问题照片数量");
+        $objPHPExcel->getActiveSheet()->setCellValue('c1', "A照片内容不符合要求");
+        $objPHPExcel->getActiveSheet()->setCellValue('d1', "B非法文字存在"); //设置列的值
+        $objPHPExcel->getActiveSheet()->setCellValue('e1', "C参加组别不对");
+        $objPHPExcel->getActiveSheet()->setCellValue('f1', "D其它");
+
+
+        $key = 2; //控制行数从第二行开始,标题已经占用了第一行
+        foreach ($result as $k => $v) {
+
+            $a = date("Y年m月d日", strtotime($k));
+            $b = array_sum($v);
+            $c = $v[1] > 0 ? $v[1] : 0;
+            $d = $v[2] > 0 ? $v[2] : 0;
+            $e = $v[3] > 0 ? $v[3] : 0;
+            $f = $v[4] > 0 ? $v[4] : 0;
+
+            $objPHPExcel->getActiveSheet()->setCellValue('a' . $key, "$a");
+            $objPHPExcel->getActiveSheet()->setCellValue('b' . $key, "$b");
+            $objPHPExcel->getActiveSheet()->setCellValue('c' . $key, "$c");
+            $objPHPExcel->getActiveSheet()->setCellValue('d' . $key, "$d");
+            $objPHPExcel->getActiveSheet()->setCellValue('e' . $key, "$e");
+            $objPHPExcel->getActiveSheet()->setCellValue('f' . $key, "$f");
+            $key++;
+        }
+
+
+        $objPHPExcel->getActiveSheet()->getColumnDimension('A')->setWidth(15);
+        $objPHPExcel->getActiveSheet()->getColumnDimension('B')->setWidth(15);
+        $objPHPExcel->getActiveSheet()->getColumnDimension('C')->setWidth(20);
+        $objPHPExcel->getActiveSheet()->getColumnDimension('D')->setWidth(20);
+        $objPHPExcel->getActiveSheet()->getColumnDimension('E')->setWidth(16);
+        $objPHPExcel->getActiveSheet()->getColumnDimension('F')->setWidth(10);
+        $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel5');
+
+        $filename = date("Y-m-d H:i:s") . '导出的问题照片数据.xls';
+        header('Content-Type: application/vnd.ms-excel');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        $objWriter->save('php://output');
+        exit;
+    }
+}
+?>
+
+<?php include ROOT . 'include/header.php'; ?>
+<div class="main">
+    <?php include ROOT . 'include/menu.php'; ?>
+    <div class="wrapper">
+        <div class="titCounts">
+            <h2>问题照片统计报表</h2>
+        </div>
+        <div class="filterBox dataCountFilter">
+            <ul>              
+                <li class="search">
+                    <span class="tit">按日统计：</span>
+                    <input type="text" name="start_time" id="start" value="<?= $start ?>">&nbsp;至&nbsp;<input type="text"  name="end_time" value="<?= $end ?>"  id="end"/>
+                    至
+                    <span class="btnConfirm"><a href="javascript:searchNGPhotos();">确定</a></span>
+                </li>
+            </ul>
+
+        </div>
+        <div class="dataCountNGList">
+            <?php if (count($result) > 0) { ?><h3><a class="btnAll fr" href="javascript:exportNGPhotos(<?= Admin::check_export() ?>);">Excel导出</a></h3><?php } ?>
+            <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                    <th width="25%">日期</th>
+                    <th width="15%">问题照片数量</th>
+                    <th width="15%">A照片内容不符合要求</th>
+                    <th width="15%">B非法文字存在</th>
+                    <th width="15%">C参加组别不对</th>
+                    <th width="15%">D其他</th>
+                </tr> 
+                <? foreach ($result as $k => $v) { ?>
+                    <tr>
+                        <td><?= date("Y年m月d日", strtotime($k)) ?></td>
+                        <td><?= array_sum($v) ?></td>
+                        <td><?= $v[1] > 0 ? $v[1] : 0 ?></td>
+                        <td><?= $v[2] > 0 ? $v[2] : 0 ?></td>
+                        <td><?= $v[3] > 0 ? $v[3] : 0 ?></td>
+                        <td><?= $v[4] > 0 ? $v[4] : 0 ?></td>
+                    </tr>    
+                <? } ?>
+            </table>                        
+        </div>
+    </div>
+</div>
+<?php include ROOT . 'include/footer.php'; ?>
+</body>
+</html>
+<script type="text/javascript" src="js/listtable.js"></script>
+<script type="text/javascript" src="js/photo.js"></script>
+<script type="text/javascript" src="js/date/jquery.datepick.js"></script>
+<script type="text/javascript" src="js/date/jquery.datepick-zh-CN.js"></script>
+<link href="js/date/jquery.datepick.css" rel="stylesheet" type="text/css" />
+<script language="JavaScript">
+    $(document).ready(function() {
+        $('#start,#end').datepick({dateFormat: 'yy-mm-dd'});
+        listTable.filter.start = '<?php echo $startdate ?>';
+        listTable.filter.end = '<?php echo $enddate ?>';
+    });
+
+</script>

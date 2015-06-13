@@ -1,0 +1,78 @@
+<?php
+session_start();
+include '../inc/config/config.php';
+include ROOT . '/biz/Admin.php';
+if (Admin::check_login_status()) {
+    Tools::GshowMsg('', "check_photo.php");
+    exit;
+}
+$action = Tools::getValue("action");
+if (isset($action) && $action == 'login') {
+    $loginname = Tools::getValue("login_name");
+    $loginpwd = Tools::getValue("login_pwd");
+    Admin::admin_login($loginname, $loginpwd);
+    exit;
+}
+$title = '登录';
+$loginUrl = true;
+?>
+
+<?php include ROOT . 'include/header.php'; ?>
+<div class="loginMain">
+    <div class="loginTitle">
+        <h1>佳能感动典藏摄影大赛事务局审核后台</h1>
+    </div>
+    <div class="loginContent">
+        <dl>
+            <dt>用户名：</dt>
+            <dd><input type="text" name="login_name" id="login_name"/></dd>
+        </dl>
+        <dl>
+            <dt>密码：</dt>
+            <dd><input type="password" name="login_pwd" id="login_pwd"/></dd>
+        </dl>
+        <div class="tips" id="login_tips" >&nbsp;</div>
+        <div class="btn"><a id="accountBtn" href="javascript:void(0)">登录</a></div>
+    </div>
+</div>
+</body>
+</html>
+<script >
+    $(document).ready(function() {
+        $('#accountBtn').click(function() {
+            var login_name = $.trim($('#login_name').val());
+            var login_pwd = $.trim($('#login_pwd').val());
+            if (login_name == "") {
+                $('#login_tips').html('请输入用户名');
+                return false;
+            }
+            if (login_pwd == "") {
+                $('#login_tips').html('请输入登录密码');
+                return false;
+            }
+            var data = {
+                login_name: login_name,
+                login_pwd: login_pwd,
+                action: 'login',
+            };
+            $.post('login.php', data, function(data) {
+                if (data.errorCode == 1) {
+                    $('#login_tips').html('用户名不存在！');
+                    return false;
+                } else if (data.errorCode == 2) {
+                    $('#login_tips').html('密码错误！');
+                    return false;
+                }
+                location.href = 'check_photo.php';
+            }, 'json');
+        });
+
+        $("#login_pwd").keydown(function(e) {
+            var curKey = e.which;
+            if (curKey == 13) {
+                $("#accountBtn").click();
+                return false;
+            }
+        });
+    });
+</script>
